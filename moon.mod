@@ -19,7 +19,13 @@ repository = "https://github.com/cn-xjr/MoonPlan"
 
 license = "Apache-2.0"
 
-keywords = [ "constraint-programming", "scheduling", "solver", "optimization", "wasm" ]
+keywords = [
+  "constraint-programming",
+  "scheduling",
+  "solver",
+  "optimization",
+  "wasm",
+]
 
 preferred_target = "wasm-gc"
 

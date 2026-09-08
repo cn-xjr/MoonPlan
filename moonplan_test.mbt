@@ -4,19 +4,25 @@ fn queens_problem(size : Int) -> @moonplan.Problem {
   let queens : Array[@moonplan.Var] = []
   for column = 0; column < size; column = column + 1 {
     queens.push(
-      problem.add_variable("q\{column}", @moonplan.int_domain(0, size - 1)).unwrap(),
+      problem
+      .add_variable("q\{column}", @moonplan.int_domain(0, size - 1))
+      .unwrap(),
     )
   }
   problem.add_constraint(@moonplan.AllDifferent(queens.copy())).unwrap()
   for left = 0; left < size; left = left + 1 {
     for right = left + 1; right < size; right = right + 1 {
       let delta = right - left
-      problem.add_constraint(
+      problem
+      .add_constraint(
         @moonplan.OffsetDifferent(queens[right], queens[left], delta),
-      ).unwrap()
-      problem.add_constraint(
+      )
+      .unwrap()
+      problem
+      .add_constraint(
         @moonplan.OffsetDifferent(queens[right], queens[left], -delta),
-      ).unwrap()
+      )
+      .unwrap()
     }
   }
   problem
@@ -59,9 +65,9 @@ test "solves a small staffing model" {
   let reception = problem.add_variable("reception", [0, 1]).unwrap()
   let support = problem.add_variable("support", [1, 2]).unwrap()
   let on_call = problem.add_variable("on_call", [0, 2]).unwrap()
-  problem.add_constraint(
-    @moonplan.AllDifferent([reception, support, on_call]),
-  ).unwrap()
+  problem
+  .add_constraint(@moonplan.AllDifferent([reception, support, on_call]))
+  .unwrap()
   match problem.solve() {
     @moonplan.Unsatisfied(_) => fail("staffing model must be satisfiable")
     @moonplan.Satisfied(solution, _) => {

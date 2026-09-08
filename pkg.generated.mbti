@@ -1,0 +1,113 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "cn-xjr/moonplan"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn build_roster(Array[Worker], Array[Shift]) -> Result[Roster, RosterError]
+
+pub fn int_domain(Int, Int) -> Array[Int]
+
+// Errors
+
+// Types and methods
+pub(all) struct Binding {
+  name : String
+  value : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Constraint {
+  Equal(Var, Int)
+  NotEqual(Var, Int)
+  Different(Var, Var)
+  OffsetDifferent(Var, Var, Int)
+  LessThan(Var, Var)
+  AllDifferent(Array[Var])
+  SumEquals(Array[Var], Int)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ModelError {
+  EmptyName
+  DuplicateName(String)
+  EmptyDomain(String)
+  DuplicateDomainValue(String, Int)
+  ForeignVariable(String)
+  EmptyConstraint
+  InvalidSolutionLimit(Int)
+} derive(Eq, @debug.Debug)
+pub fn ModelError::message(Self) -> String
+
+pub struct Problem {
+  variables : Array[VariableSpec]
+  constraints : Array[Constraint]
+}
+pub fn Problem::add_constraint(Self, Constraint) -> Result[Unit, ModelError]
+pub fn Problem::add_variable(Self, String, Array[Int]) -> Result[Var, ModelError]
+pub fn Problem::constraint_count(Self) -> Int
+pub fn Problem::new() -> Self
+pub fn Problem::solve(Self) -> SolveOutcome
+pub fn Problem::solve_all(Self, Int) -> Result[(Array[Solution], SolveStats), ModelError]
+pub fn Problem::variable_count(Self) -> Int
+
+pub(all) struct Roster {
+  entries : Array[RosterEntry]
+  stats : SolveStats
+} derive(Eq, @debug.Debug)
+pub fn Roster::worker_for_shift(Self, Int) -> Worker?
+
+pub(all) struct RosterEntry {
+  shift : Shift
+  worker : Worker
+} derive(Eq, @debug.Debug)
+
+pub(all) enum RosterError {
+  DuplicateWorkerId(Int)
+  DuplicateShiftId(Int)
+  NoEligibleWorker(Int, String)
+  InvalidModel(ModelError)
+  Unsatisfiable(SolveStats)
+} derive(Eq, @debug.Debug)
+pub fn RosterError::message(Self) -> String
+
+pub(all) struct Shift {
+  id : Int
+  name : String
+  slot : Int
+  required_skill : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Solution {
+  bindings : Array[Binding]
+} derive(Eq, @debug.Debug)
+pub fn Solution::get(Self, String) -> Int?
+
+pub(all) enum SolveOutcome {
+  Satisfied(Solution, SolveStats)
+  Unsatisfied(SolveStats)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SolveStats {
+  nodes : Int
+  backtracks : Int
+  solutions : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Var {
+  index : Int
+  name : String
+} derive(Eq, @debug.Debug)
+
+type VariableSpec derive(Eq, @debug.Debug)
+
+pub(all) struct Worker {
+  id : Int
+  name : String
+  skills : Array[String]
+  available_slots : Array[Int]
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits

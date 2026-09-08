@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install MoonBit
+        uses: hustcer/setup-moonbit@v1
+      - name: Check and test all targets
+        run: |
+          moon version --all
+          moon check --target all --deny-warn
+          moon test --target all --deny-warn
+          moon info
+          moon fmt
+          git diff --exit-code

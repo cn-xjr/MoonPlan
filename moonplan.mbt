@@ -40,7 +40,8 @@ pub fn ModelError::message(self : ModelError) -> String {
       "variable \{name} repeats domain value \{value}"
     ForeignVariable(name) => "constraint refers to unknown variable: \{name}"
     EmptyConstraint => "constraint must contain at least one variable"
-    InvalidSolutionLimit(limit) => "solution limit must be positive, got \{limit}"
+    InvalidSolutionLimit(limit) =>
+      "solution limit must be positive, got \{limit}"
   }
 }
 
@@ -60,7 +61,7 @@ pub struct Problem {
 ///|
 /// Create an empty constraint problem.
 pub fn Problem::new() -> Problem {
-  { variables: [], constraints: [] }
+  { variables: [], constraints: [], }
 }
 
 ///|
@@ -110,8 +111,8 @@ pub fn Problem::add_variable(
       }
     }
   }
-  let variable = { index: self.variables.length(), name }
-  self.variables.push({ variable, domain: domain.copy() })
+  let variable = { index: self.variables.length(), name, }
+  self.variables.push({ variable, domain: domain.copy(), })
   Ok(variable)
 }
 
@@ -126,8 +127,9 @@ fn Problem::owns(self : Problem, variable : Var) -> Bool {
 fn constraint_variables(constraint : Constraint) -> Array[Var] {
   match constraint {
     Equal(variable, _) | NotEqual(variable, _) => [variable]
-    Different(left, right) | OffsetDifferent(left, right, _) |
-    LessThan(left, right) => [left, right]
+    Different(left, right)
+    | OffsetDifferent(left, right, _)
+    | LessThan(left, right) => [left, right]
     AllDifferent(variables) | SumEquals(variables, _) => variables
   }
 }
@@ -288,8 +290,9 @@ fn constraint_possible(
             high = high + value
           }
           None => {
-            let (domain_low, domain_high) =
-              domain_bounds(problem.variables[variable.index].domain)
+            let (domain_low, domain_high) = domain_bounds(
+              problem.variables[variable.index].domain,
+            )
             low = low + domain_low
             high = high + domain_high
           }
@@ -359,7 +362,7 @@ fn make_solution(problem : Problem, assignment : Array[Int?]) -> Solution {
   for index = 0; index < problem.variables.length(); index = index + 1 {
     match assignment[index] {
       Some(value) =>
-        bindings.push({ name: problem.variables[index].variable.name, value })
+        bindings.push({ name: problem.variables[index].variable.name, value, })
       None => ()
     }
   }
@@ -378,11 +381,10 @@ fn search(
     return
   }
   match choose_variable(problem, assignment) {
-    None => {
+    None =>
       if all_constraints_possible(problem, assignment) {
         solutions.push(make_solution(problem, assignment))
       }
-    }
     Some((index, values)) => {
       if values.length() == 0 {
         counters.backtracks = counters.backtracks + 1
@@ -415,14 +417,19 @@ pub fn Problem::solve_all(
     return Err(InvalidSolutionLimit(limit))
   }
   let assignment : Array[Int?] = Array::make(self.variables.length(), None)
-  let counters : SearchCounters = { nodes: 0, backtracks: 0 }
+  let counters : SearchCounters = { nodes: 0, backtracks: 0, }
   let solutions : Array[Solution] = []
   search(self, assignment, counters, solutions, limit)
-  Ok((solutions, {
-    nodes: counters.nodes,
-    backtracks: counters.backtracks,
-    solutions: solutions.length(),
-  }))
+  Ok(
+    (
+      solutions,
+      {
+        nodes: counters.nodes,
+        backtracks: counters.backtracks,
+        solutions: solutions.length(),
+      },
+    ),
+  )
 }
 
 ///|
