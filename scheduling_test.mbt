@@ -125,3 +125,70 @@ test "accepts an empty roster with a zero workload cap" {
   let roster = @moonplan.build_capped_roster(demo_workers(), [], 0).unwrap()
   assert_eq(roster.entries.length(), 0)
 }
+
+///|
+test "enforces a minimum rest gap between shifts" {
+  let workers : Array[@moonplan.Worker] = [
+    { id: 1, name: "Ada", skills: ["support"], available_slots: [9, 10], },
+    { id: 2, name: "Bo", skills: ["support"], available_slots: [9, 10], },
+  ]
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+    { id: 2, name: "Midday", slot: 10, required_skill: "support", },
+  ]
+  let policy : @moonplan.RosterPolicy = {
+    max_shifts_per_worker: None,
+    minimum_slot_gap: 2,
+  }
+  let roster = @moonplan.build_roster_with_policy(workers, shifts, policy).unwrap()
+  assert_eq(roster.assignment_count(1), 1)
+  assert_eq(roster.assignment_count(2), 1)
+}
+
+///|
+test "reports when the required rest makes a roster impossible" {
+  let workers : Array[@moonplan.Worker] = [
+    { id: 1, name: "Solo", skills: ["support"], available_slots: [9, 10], },
+  ]
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+    { id: 2, name: "Midday", slot: 10, required_skill: "support", },
+  ]
+  let policy : @moonplan.RosterPolicy = {
+    max_shifts_per_worker: None,
+    minimum_slot_gap: 2,
+  }
+  assert_true(
+    @moonplan.build_roster_with_policy(workers, shifts, policy)
+    is Err(@moonplan.Unsatisfiable(_)),
+  )
+}
+
+///|
+test "allows shifts that meet the minimum rest gap" {
+  let workers : Array[@moonplan.Worker] = [
+    { id: 1, name: "Solo", skills: ["support"], available_slots: [9, 11], },
+  ]
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+    { id: 2, name: "Evening", slot: 11, required_skill: "support", },
+  ]
+  let policy : @moonplan.RosterPolicy = {
+    max_shifts_per_worker: Some(2),
+    minimum_slot_gap: 2,
+  }
+  let roster = @moonplan.build_roster_with_policy(workers, shifts, policy).unwrap()
+  assert_eq(roster.assignment_count(1), 2)
+}
+
+///|
+test "rejects a negative minimum rest gap" {
+  let policy : @moonplan.RosterPolicy = {
+    max_shifts_per_worker: None,
+    minimum_slot_gap: -1,
+  }
+  assert_true(
+    @moonplan.build_roster_with_policy(demo_workers(), [], policy)
+    is Err(@moonplan.InvalidRestGap(-1)),
+  )
+}

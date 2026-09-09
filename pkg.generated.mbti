@@ -14,6 +14,8 @@ pub fn build_capped_roster(Array[Worker], Array[Shift], Int) -> Result[Roster, R
 
 pub fn build_roster(Array[Worker], Array[Shift]) -> Result[Roster, RosterError]
 
+pub fn build_roster_with_policy(Array[Worker], Array[Shift], RosterPolicy) -> Result[Roster, RosterError]
+
 pub fn int_domain(Int, Int) -> Array[Int]
 
 pub fn suggest_capped_roster_repairs(Array[Worker], Array[Shift], Int) -> Result[RosterRepairPlan, RosterError]
@@ -120,6 +122,7 @@ pub(all) enum RosterError {
   InsufficientSlotCapacity(Int, Int, Int)
   InvalidCandidateLimit(Int)
   InvalidWorkloadLimit(Int)
+  InvalidRestGap(Int)
   InvalidModel(ModelError)
   Unsatisfiable(SolveStats)
 } derive(Eq, @debug.Debug)
@@ -132,6 +135,12 @@ pub(all) enum RosterIssue {
   SlotCoverageShortfall(Int, Int, Int)
 } derive(Eq, @debug.Debug)
 pub fn RosterIssue::message(Self) -> String
+
+pub(all) struct RosterPolicy {
+  max_shifts_per_worker : Int?
+  minimum_slot_gap : Int
+} derive(Eq, @debug.Debug)
+pub fn RosterPolicy::default() -> Self
 
 pub(all) enum RosterRepair {
   RenameWorkerId(Int)

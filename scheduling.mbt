@@ -47,6 +47,24 @@ pub(all) struct OptimizedRoster {
 } derive(Eq, Debug)
 
 ///|
+/// Hard rules applied while building a roster.
+///
+/// Slot values are treated as ordered, equally sized time units. A minimum
+/// gap of two therefore prevents one worker from taking shifts in adjacent
+/// slots while allowing shifts two or more units apart.
+pub(all) struct RosterPolicy {
+  max_shifts_per_worker : Int?
+  minimum_slot_gap : Int
+} derive(Eq, Debug)
+
+///|
+/// A policy that adds no restrictions beyond skills, availability, and
+/// same-slot exclusivity.
+pub fn RosterPolicy::default() -> RosterPolicy {
+  { max_shifts_per_worker: None, minimum_slot_gap: 0, }
+}
+
+///|
 /// Domain-specific scheduling failures.
 pub(all) enum RosterError {
   DuplicateWorkerId(Int)
@@ -55,6 +73,7 @@ pub(all) enum RosterError {
   InsufficientSlotCapacity(Int, Int, Int)
   InvalidCandidateLimit(Int)
   InvalidWorkloadLimit(Int)
+  InvalidRestGap(Int)
   InvalidModel(ModelError)
   Unsatisfiable(SolveStats)
 } derive(Eq, Debug)
@@ -73,6 +92,7 @@ pub fn RosterError::message(self : RosterError) -> String {
       "candidate limit must be positive, got \{limit}"
     InvalidWorkloadLimit(limit) =>
       "workload limit must not be negative, got \{limit}"
+    InvalidRestGap(gap) => "minimum slot gap must not be negative, got \{gap}"
     InvalidModel(error) => "invalid constraint model: \{error.message()}"
     Unsatisfiable(stats) =>
       "no feasible roster after \{stats.nodes} assignments and \{stats.backtracks} backtracks"
@@ -107,6 +127,57 @@ fn add_workload_constraints(
     }
   }
   Ok(())
+}
+
+///|
+fn slot_distance(left : Int, right : Int) -> Int {
+  if left >= right {
+    left - right
+  } else {
+    right - left
+  }
+}
+
+///|
+fn add_rest_constraints(
+  model : RosterModel,
+  shifts : Array[Shift],
+  minimum_slot_gap : Int,
+) -> Result[Unit, RosterError] {
+  for left = 0; left < shifts.length(); left = left + 1 {
+    for right = left + 1; right < shifts.length(); right = right + 1 {
+      let distance = slot_distance(shifts[left].slot, shifts[right].slot)
+      if distance > 0 && distance < minimum_slot_gap {
+        match
+          model.problem.add_named_constraint(
+            "rest-gap-\{minimum_slot_gap}:shift-\{shifts[left].id}-vs-\{shifts[right].id}",
+            Different(model.variables[left], model.variables[right]),
+          ) {
+          Ok(_) => ()
+          Err(error) => return Err(InvalidModel(error))
+        }
+      }
+    }
+  }
+  Ok(())
+}
+
+///|
+fn apply_roster_policy(
+  model : RosterModel,
+  workers : Array[Worker],
+  shifts : Array[Shift],
+  policy : RosterPolicy,
+) -> Result[Unit, RosterError] {
+  match policy.max_shifts_per_worker {
+    Some(limit) =>
+      match add_workload_constraints(model, workers, limit) {
+        Err(error) => return Err(error)
+        Ok(_) => ()
+      }
+    None => ()
+  }
+  add_rest_constraints(model, shifts, policy.minimum_slot_gap)
 }
 
 ///|
@@ -272,13 +343,30 @@ pub fn build_capped_roster(
   shifts : Array[Shift],
   max_shifts_per_worker : Int,
 ) -> Result[Roster, RosterError] {
-  if max_shifts_per_worker < 0 {
-    return Err(InvalidWorkloadLimit(max_shifts_per_worker))
+  build_roster_with_policy(workers, shifts, {
+    max_shifts_per_worker: Some(max_shifts_per_worker),
+    minimum_slot_gap: 0,
+  })
+}
+
+///|
+/// Build a roster under composable workload and rest rules.
+pub fn build_roster_with_policy(
+  workers : Array[Worker],
+  shifts : Array[Shift],
+  policy : RosterPolicy,
+) -> Result[Roster, RosterError] {
+  if policy.minimum_slot_gap < 0 {
+    return Err(InvalidRestGap(policy.minimum_slot_gap))
+  }
+  match policy.max_shifts_per_worker {
+    Some(limit) if limit < 0 => return Err(InvalidWorkloadLimit(limit))
+    _ => ()
   }
   match build_roster_model(workers, shifts) {
     Err(error) => Err(error)
     Ok(model) => {
-      match add_workload_constraints(model, workers, max_shifts_per_worker) {
+      match apply_roster_policy(model, workers, shifts, policy) {
         Err(error) => return Err(error)
         Ok(_) => ()
       }
