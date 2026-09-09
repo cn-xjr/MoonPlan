@@ -5,7 +5,7 @@ pub(all) struct Worker {
   name : String
   skills : Array[String]
   available_slots : Array[Int]
-} derive(Eq, Debug)
+} derive(Eq, Debug, ToJson, FromJson)
 
 ///|
 /// A unit of work that needs exactly one eligible worker.
@@ -14,21 +14,21 @@ pub(all) struct Shift {
   name : String
   slot : Int
   required_skill : String
-} derive(Eq, Debug)
+} derive(Eq, Debug, ToJson, FromJson)
 
 ///|
 /// One resolved worker-to-shift assignment.
 pub(all) struct RosterEntry {
   shift : Shift
   worker : Worker
-} derive(Eq, Debug)
+} derive(Eq, Debug, ToJson)
 
 ///|
 /// A feasible roster together with search evidence.
 pub(all) struct Roster {
   entries : Array[RosterEntry]
   stats : SolveStats
-} derive(Eq, Debug)
+} derive(Eq, Debug, ToJson)
 
 ///|
 /// A workload balance score. Lower spread and lower maximum load are better.
@@ -36,7 +36,7 @@ pub(all) struct BalanceScore {
   minimum_load : Int
   maximum_load : Int
   spread : Int
-} derive(Eq, Debug)
+} derive(Eq, Debug, ToJson)
 
 ///|
 /// The best roster found within a bounded candidate search.
@@ -55,7 +55,7 @@ pub(all) struct OptimizedRoster {
 pub(all) struct RosterPolicy {
   max_shifts_per_worker : Int?
   minimum_slot_gap : Int
-} derive(Eq, Debug)
+} derive(Eq, Debug, ToJson, FromJson)
 
 ///|
 /// A policy that adds no restrictions beyond skills, availability, and

@@ -3,6 +3,7 @@ package "cn-xjr/moonplan"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
@@ -18,6 +19,10 @@ pub fn build_roster(Array[Worker], Array[Shift]) -> Result[Roster, RosterError]
 
 pub fn build_roster_with_policy(Array[Worker], Array[Shift], RosterPolicy) -> Result[Roster, RosterError]
 
+pub fn decode_roster_request(String) -> Result[RosterRequest, RosterJsonError]
+
+pub fn encode_preferred_roster(PreferredRoster, Int) -> String
+
 pub fn int_domain(Int, Int) -> Array[Int]
 
 pub fn suggest_capped_roster_repairs(Array[Worker], Array[Shift], Int) -> Result[RosterRepairPlan, RosterError]
@@ -29,13 +34,13 @@ pub(all) struct AssignmentPenalty {
   worker_id : Int
   shift_id : Int
   penalty : Int
-} derive(Eq, @debug.Debug)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct BalanceScore {
   minimum_load : Int
   maximum_load : Int
   spread : Int
-} derive(Eq, @debug.Debug)
+} derive(Eq, ToJson, @debug.Debug)
 
 pub(all) struct Binding {
   name : String
@@ -96,7 +101,7 @@ pub(all) struct PreferredRoster {
   total_penalty : Int
   balance : BalanceScore
   candidates_evaluated : Int
-} derive(Eq, @debug.Debug)
+} derive(Eq, ToJson, @debug.Debug)
 
 pub struct Problem {
   variables : Array[VariableSpec]
@@ -115,7 +120,7 @@ pub fn Problem::variable_count(Self) -> Int
 pub(all) struct Roster {
   entries : Array[RosterEntry]
   stats : SolveStats
-} derive(Eq, @debug.Debug)
+} derive(Eq, ToJson, @debug.Debug)
 pub fn Roster::assignment_count(Self, Int) -> Int
 pub fn Roster::worker_for_shift(Self, Int) -> Worker?
 
@@ -128,7 +133,7 @@ pub fn RosterAnalysis::summary(Self) -> String
 pub(all) struct RosterEntry {
   shift : Shift
   worker : Worker
-} derive(Eq, @debug.Debug)
+} derive(Eq, ToJson, @debug.Debug)
 
 pub(all) enum RosterError {
   DuplicateWorkerId(Int)
@@ -155,10 +160,16 @@ pub(all) enum RosterIssue {
 } derive(Eq, @debug.Debug)
 pub fn RosterIssue::message(Self) -> String
 
+pub(all) enum RosterJsonError {
+  InvalidJson(String)
+  InvalidRosterSchema(String)
+} derive(Eq, @debug.Debug)
+pub fn RosterJsonError::message(Self) -> String
+
 pub(all) struct RosterPolicy {
   max_shifts_per_worker : Int?
   minimum_slot_gap : Int
-} derive(Eq, @debug.Debug)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 pub fn RosterPolicy::default() -> Self
 
 pub(all) enum RosterRepair {
@@ -178,12 +189,21 @@ pub(all) struct RosterRepairPlan {
 pub fn RosterRepairPlan::is_feasible(Self) -> Bool
 pub fn RosterRepairPlan::summary(Self) -> String
 
+pub(all) struct RosterRequest {
+  workers : Array[Worker]
+  shifts : Array[Shift]
+  policy : RosterPolicy
+  penalties : Array[AssignmentPenalty]
+  candidate_limit : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn RosterRequest::solve(Self) -> Result[PreferredRoster, RosterError]
+
 pub(all) struct Shift {
   id : Int
   name : String
   slot : Int
   required_skill : String
-} derive(Eq, @debug.Debug)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct Solution {
   bindings : Array[Binding]
@@ -199,7 +219,7 @@ pub(all) struct SolveStats {
   nodes : Int
   backtracks : Int
   solutions : Int
-} derive(Eq, @debug.Debug)
+} derive(Eq, ToJson, @debug.Debug)
 
 pub(all) struct Var {
   index : Int
@@ -213,7 +233,7 @@ pub(all) struct Worker {
   name : String
   skills : Array[String]
   available_slots : Array[Int]
-} derive(Eq, @debug.Debug)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
 

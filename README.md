@@ -47,6 +47,7 @@ repair suggestion: raise the per-worker workload limit from 1 to 2
 - 每人班次数量硬上限，避免跨时段过度排班
 - `RosterPolicy` 组合工作量上限与最小休息间隔
 - 非负分配惩罚、偏好优化与工作量均衡同分决策
+- `RosterRequest` JSON 输入、字段路径错误与稳定结果输出
 - 二分图匹配驱动的排班预检与容量冲突解释
 - 无解、无合格人员和重复标识等明确错误
 
@@ -82,7 +83,7 @@ moon run cmd/main
 1. 可撤销域与传播队列，提升大规模模型的搜索效率。
 2. 扩展加权目标，在现有分配偏好基础上支持连续工作成本和多级目标。
 3. 扩展修复建议，支持休息间隔、连续工作时长和偏好冲突。
-4. MoonBit/Wasm 可视化工作台，展示排班结果、搜索树和修复建议。
+4. 基于现有 JSON 边界构建 MoonBit/Wasm 可视化工作台。
 5. 可复现排班基准与跨后端一致性验证。
 
 完整设计、不变量和里程碑见 [DESIGN.md](DESIGN.md)。可执行文档版本见 [README.mbt.md](README.mbt.md)。

@@ -7,7 +7,7 @@ pub(all) struct AssignmentPenalty {
   worker_id : Int
   shift_id : Int
   penalty : Int
-} derive(Eq, Debug)
+} derive(Eq, Debug, ToJson, FromJson)
 
 ///|
 /// The lowest-penalty roster found within a bounded candidate search.
@@ -16,7 +16,7 @@ pub(all) struct PreferredRoster {
   total_penalty : Int
   balance : BalanceScore
   candidates_evaluated : Int
-} derive(Eq, Debug)
+} derive(Eq, Debug, ToJson)
 
 ///|
 fn worker_id_exists(workers : Array[Worker], worker_id : Int) -> Bool {

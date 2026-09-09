@@ -234,7 +234,7 @@ pub(all) struct SolveStats {
   nodes : Int
   backtracks : Int
   solutions : Int
-} derive(Eq, Debug)
+} derive(Eq, Debug, ToJson)
 
 ///|
 /// Solver result with an explicit unsatisfiable branch.
