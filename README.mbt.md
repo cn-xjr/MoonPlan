@@ -14,12 +14,13 @@ MoonPlan 是一个使用纯 MoonBit 实现的**可解释有限域约束求解与
 
 - 有限域整数变量与稳定变量句柄
 - `Equal`、`NotEqual`、`Different`、`OffsetDifferent`
-- `LessThan`、`AllDifferent`、`SumEquals`
+- `LessThan`、`AllDifferent`、`SumEquals`、`CountAtMost`
 - MRV 启发式、约束剪枝、确定性解枚举
 - 节点数、回溯数和解数量统计
 - N 皇后、不可满足模型和人员排班测试
 - `Worker`、`Shift`、`Roster` 领域模型与可运行的人员排班示例
 - `build_balanced_roster` 有界候选优化与工作量均衡评分
+- `build_capped_roster` 每人班次数量硬上限
 - `analyze_roster` 二分图匹配预检与容量冲突解释
 
 ## 运行
@@ -35,7 +36,7 @@ moon run cmd/main
 ## 路线图
 
 1. **求解器内核**：可撤销域、约束传播队列、degree/LCV 启发式、表约束和线性约束。
-2. **真实排班层**：班次、人员、技能、休息间隔、连续工作上限、偏好与软约束。
+2. **真实排班层**：班次、人员、技能、休息间隔、连续工作时长、偏好与软约束。
 3. **优化与解释**：在现有均衡评分和排班预检上增加分支定界、加权目标、通用不可满足核心和修复建议。
 4. **可视化工作台**：Wasm 求解、甘特图/日历视图、搜索树与“为什么不能这样排”的交互解释。
 5. **工程成熟度**：跨后端一致性、基准语料、属性测试、Mooncakes 发布与下游示例。

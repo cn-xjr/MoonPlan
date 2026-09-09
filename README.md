@@ -34,12 +34,13 @@ searched 6 assignments
 
 - 有限域整数变量与严格的模型边界检查
 - `Equal`、`NotEqual`、`Different`、`OffsetDifferent`
-- `LessThan`、`AllDifferent`、`SumEquals`
+- `LessThan`、`AllDifferent`、`SumEquals`、`CountAtMost`
 - MRV（最少剩余值）变量选择和确定性回溯搜索
 - 多解枚举，以及搜索节点、回溯次数等诊断数据
 - `Worker`、`Shift`、`Roster` 排班领域模型
 - 技能、可用时间和同一时段容量冲突检查
 - 有界候选搜索与工作量均衡评分
+- 每人班次数量硬上限，避免跨时段过度排班
 - 二分图匹配驱动的排班预检与容量冲突解释
 - 无解、无合格人员和重复标识等明确错误
 
@@ -66,7 +67,7 @@ moon test --deny-warn
 moon run cmd/main
 ```
 
-当前测试覆盖四皇后、多解枚举、不可满足问题、模型校验，以及人员技能、可用时间和同一时段冲突。CI 在 Linux、macOS 和 Windows 上执行全目标检查与测试。
+当前测试覆盖四皇后、多解枚举、不可满足问题、模型校验，以及人员技能、可用时间、同一时段冲突和工作量上限。CI 在 Linux、macOS 和 Windows 上执行全目标检查与测试。
 
 ## 下一阶段
 

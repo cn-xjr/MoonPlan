@@ -87,3 +87,32 @@ test "validates model boundaries" {
     problem.add_variable("x", [2]) is Err(@moonplan.DuplicateName("x")),
   )
 }
+
+///|
+test "limits how often a value may be selected" {
+  let problem = @moonplan.Problem::new()
+  let morning = problem.add_variable("morning", [0, 1]).unwrap()
+  let midday = problem.add_variable("midday", [0, 1]).unwrap()
+  let evening = problem.add_variable("evening", [0, 1]).unwrap()
+  problem
+  .add_constraint(@moonplan.CountAtMost([morning, midday, evening], 0, 1))
+  .unwrap()
+  match problem.solve() {
+    @moonplan.Unsatisfied(_) => fail("the capped model must have a solution")
+    @moonplan.Satisfied(solution, _) => {
+      assert_eq(solution.get("morning"), Some(0))
+      assert_eq(solution.get("midday"), Some(1))
+      assert_eq(solution.get("evening"), Some(1))
+    }
+  }
+}
+
+///|
+test "rejects a negative constraint limit" {
+  let problem = @moonplan.Problem::new()
+  let variable = problem.add_variable("shift", [0]).unwrap()
+  assert_true(
+    problem.add_constraint(@moonplan.CountAtMost([variable], 0, -1))
+    is Err(@moonplan.InvalidConstraintLimit(-1)),
+  )
+}

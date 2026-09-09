@@ -10,6 +10,8 @@ pub fn analyze_roster(Array[Worker], Array[Shift]) -> RosterAnalysis
 
 pub fn build_balanced_roster(Array[Worker], Array[Shift], Int) -> Result[OptimizedRoster, RosterError]
 
+pub fn build_capped_roster(Array[Worker], Array[Shift], Int) -> Result[Roster, RosterError]
+
 pub fn build_roster(Array[Worker], Array[Shift]) -> Result[Roster, RosterError]
 
 pub fn int_domain(Int, Int) -> Array[Int]
@@ -36,6 +38,7 @@ pub(all) enum Constraint {
   LessThan(Var, Var)
   AllDifferent(Array[Var])
   SumEquals(Array[Var], Int)
+  CountAtMost(Array[Var], Int, Int)
 } derive(Eq, @debug.Debug)
 
 pub(all) enum ModelError {
@@ -45,6 +48,7 @@ pub(all) enum ModelError {
   DuplicateDomainValue(String, Int)
   ForeignVariable(String)
   EmptyConstraint
+  InvalidConstraintLimit(Int)
   InvalidSolutionLimit(Int)
 } derive(Eq, @debug.Debug)
 pub fn ModelError::message(Self) -> String
@@ -91,6 +95,7 @@ pub(all) enum RosterError {
   NoEligibleWorker(Int, String)
   InsufficientSlotCapacity(Int, Int, Int)
   InvalidCandidateLimit(Int)
+  InvalidWorkloadLimit(Int)
   InvalidModel(ModelError)
   Unsatisfiable(SolveStats)
 } derive(Eq, @debug.Debug)

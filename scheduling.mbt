@@ -54,6 +54,7 @@ pub(all) enum RosterError {
   NoEligibleWorker(Int, String)
   InsufficientSlotCapacity(Int, Int, Int)
   InvalidCandidateLimit(Int)
+  InvalidWorkloadLimit(Int)
   InvalidModel(ModelError)
   Unsatisfiable(SolveStats)
 } derive(Eq, Debug)
@@ -70,6 +71,8 @@ pub fn RosterError::message(self : RosterError) -> String {
       "slot \{slot} requires \{required} workers, but at most \{assignable} shifts can be covered"
     InvalidCandidateLimit(limit) =>
       "candidate limit must be positive, got \{limit}"
+    InvalidWorkloadLimit(limit) =>
+      "workload limit must not be negative, got \{limit}"
     InvalidModel(error) => "invalid constraint model: \{error.message()}"
     Unsatisfiable(stats) =>
       "no feasible roster after \{stats.nodes} assignments and \{stats.backtracks} backtracks"
@@ -228,6 +231,57 @@ pub fn build_roster(
             ),
           )
       }
+  }
+}
+
+///|
+/// Assign every shift while limiting each worker's total workload.
+///
+/// A zero limit is valid for an empty schedule. If the limit makes a non-empty
+/// schedule impossible, the result reports an unsatisfiable model with search
+/// statistics.
+pub fn build_capped_roster(
+  workers : Array[Worker],
+  shifts : Array[Shift],
+  max_shifts_per_worker : Int,
+) -> Result[Roster, RosterError] {
+  if max_shifts_per_worker < 0 {
+    return Err(InvalidWorkloadLimit(max_shifts_per_worker))
+  }
+  match build_roster_model(workers, shifts) {
+    Err(error) => Err(error)
+    Ok(model) => {
+      if model.variables.length() > 0 {
+        for worker_index = 0
+            worker_index < workers.length()
+            worker_index = worker_index + 1 {
+          match
+            model.problem.add_constraint(
+              CountAtMost(
+                model.variables.copy(),
+                worker_index,
+                max_shifts_per_worker,
+              ),
+            ) {
+            Ok(_) => ()
+            Err(error) => return Err(InvalidModel(error))
+          }
+        }
+      }
+      match model.problem.solve() {
+        Unsatisfied(stats) => Err(Unsatisfiable(stats))
+        Satisfied(solution, stats) =>
+          Ok(
+            roster_from_solution(
+              workers,
+              shifts,
+              model.variables,
+              solution,
+              stats,
+            ),
+          )
+      }
+    }
   }
 }
 

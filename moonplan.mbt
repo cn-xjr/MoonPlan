@@ -15,6 +15,7 @@ pub(all) enum Constraint {
   LessThan(Var, Var)
   AllDifferent(Array[Var])
   SumEquals(Array[Var], Int)
+  CountAtMost(Array[Var], Int, Int)
 } derive(Eq, Debug)
 
 ///|
@@ -26,6 +27,7 @@ pub(all) enum ModelError {
   DuplicateDomainValue(String, Int)
   ForeignVariable(String)
   EmptyConstraint
+  InvalidConstraintLimit(Int)
   InvalidSolutionLimit(Int)
 } derive(Eq, Debug)
 
@@ -40,6 +42,8 @@ pub fn ModelError::message(self : ModelError) -> String {
       "variable \{name} repeats domain value \{value}"
     ForeignVariable(name) => "constraint refers to unknown variable: \{name}"
     EmptyConstraint => "constraint must contain at least one variable"
+    InvalidConstraintLimit(limit) =>
+      "constraint limit must not be negative, got \{limit}"
     InvalidSolutionLimit(limit) =>
       "solution limit must be positive, got \{limit}"
   }
@@ -130,7 +134,9 @@ fn constraint_variables(constraint : Constraint) -> Array[Var] {
     Different(left, right)
     | OffsetDifferent(left, right, _)
     | LessThan(left, right) => [left, right]
-    AllDifferent(variables) | SumEquals(variables, _) => variables
+    AllDifferent(variables)
+    | SumEquals(variables, _)
+    | CountAtMost(variables, _, _) => variables
   }
 }
 
@@ -140,6 +146,11 @@ pub fn Problem::add_constraint(
   self : Problem,
   constraint : Constraint,
 ) -> Result[Unit, ModelError] {
+  match constraint {
+    CountAtMost(_, _, limit) if limit < 0 =>
+      return Err(InvalidConstraintLimit(limit))
+    _ => ()
+  }
   let variables = constraint_variables(constraint)
   if variables.length() == 0 {
     return Err(EmptyConstraint)
@@ -299,6 +310,16 @@ fn constraint_possible(
         }
       }
       target >= low && target <= high
+    }
+    CountAtMost(variables, expected, limit) => {
+      let mut count = 0
+      for variable in variables {
+        match assigned(assignment, variable) {
+          Some(value) if value == expected => count = count + 1
+          _ => ()
+        }
+      }
+      count <= limit
     }
   }
 }

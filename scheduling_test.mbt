@@ -79,3 +79,49 @@ test "rejects a non-positive optimization budget" {
     is Err(@moonplan.InvalidCandidateLimit(0)),
   )
 }
+
+///|
+test "enforces a hard workload cap" {
+  let workers : Array[@moonplan.Worker] = [
+    { id: 1, name: "Ada", skills: ["support"], available_slots: [9, 10, 11], },
+    { id: 2, name: "Bo", skills: ["support"], available_slots: [9, 10, 11], },
+  ]
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+    { id: 2, name: "Midday", slot: 10, required_skill: "support", },
+    { id: 3, name: "Evening", slot: 11, required_skill: "support", },
+  ]
+  let roster = @moonplan.build_capped_roster(workers, shifts, 2).unwrap()
+  assert_true(roster.assignment_count(1) <= 2)
+  assert_true(roster.assignment_count(2) <= 2)
+}
+
+///|
+test "reports when a workload cap makes the roster impossible" {
+  let workers : Array[@moonplan.Worker] = [
+    { id: 1, name: "Solo", skills: ["support"], available_slots: [9, 10, 11], },
+  ]
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+    { id: 2, name: "Midday", slot: 10, required_skill: "support", },
+    { id: 3, name: "Evening", slot: 11, required_skill: "support", },
+  ]
+  assert_true(
+    @moonplan.build_capped_roster(workers, shifts, 2)
+    is Err(@moonplan.Unsatisfiable(_)),
+  )
+}
+
+///|
+test "rejects a negative workload cap" {
+  assert_true(
+    @moonplan.build_capped_roster(demo_workers(), [], -1)
+    is Err(@moonplan.InvalidWorkloadLimit(-1)),
+  )
+}
+
+///|
+test "accepts an empty roster with a zero workload cap" {
+  let roster = @moonplan.build_capped_roster(demo_workers(), [], 0).unwrap()
+  assert_eq(roster.entries.length(), 0)
+}
