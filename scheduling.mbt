@@ -176,7 +176,10 @@ fn build_roster_model(
     for right = left + 1; right < shifts.length(); right = right + 1 {
       if shifts[left].slot == shifts[right].slot {
         match
-          problem.add_constraint(Different(variables[left], variables[right])) {
+          problem.add_named_constraint(
+            "slot-\{shifts[left].slot}:shift-\{shifts[left].id}-vs-\{shifts[right].id}",
+            Different(variables[left], variables[right]),
+          ) {
           Ok(_) => ()
           Err(error) => return Err(InvalidModel(error))
         }
@@ -256,7 +259,8 @@ pub fn build_capped_roster(
             worker_index < workers.length()
             worker_index = worker_index + 1 {
           match
-            model.problem.add_constraint(
+            model.problem.add_named_constraint(
+              "worker-\{workers[worker_index].id}:workload-cap",
               CountAtMost(
                 model.variables.copy(),
                 worker_index,

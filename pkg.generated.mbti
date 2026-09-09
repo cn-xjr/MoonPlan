@@ -30,6 +30,17 @@ pub(all) struct Binding {
   value : Int
 } derive(Eq, @debug.Debug)
 
+pub(all) struct ConflictItem {
+  index : Int
+  name : String?
+  constraint : Constraint
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ConflictReport {
+  items : Array[ConflictItem]
+  solver_runs : Int
+} derive(Eq, @debug.Debug)
+
 pub(all) enum Constraint {
   Equal(Var, Int)
   NotEqual(Var, Int)
@@ -41,9 +52,18 @@ pub(all) enum Constraint {
   CountAtMost(Array[Var], Int, Int)
 } derive(Eq, @debug.Debug)
 
+type ConstraintSpec
+
+pub(all) enum ExplainOutcome {
+  Consistent(SolveStats)
+  Inconsistent(ConflictReport)
+} derive(Eq, @debug.Debug)
+
 pub(all) enum ModelError {
   EmptyName
   DuplicateName(String)
+  EmptyConstraintName
+  DuplicateConstraintName(String)
   EmptyDomain(String)
   DuplicateDomainValue(String, Int)
   ForeignVariable(String)
@@ -61,11 +81,13 @@ pub(all) struct OptimizedRoster {
 
 pub struct Problem {
   variables : Array[VariableSpec]
-  constraints : Array[Constraint]
+  constraints : Array[ConstraintSpec]
 }
 pub fn Problem::add_constraint(Self, Constraint) -> Result[Unit, ModelError]
+pub fn Problem::add_named_constraint(Self, String, Constraint) -> Result[Unit, ModelError]
 pub fn Problem::add_variable(Self, String, Array[Int]) -> Result[Var, ModelError]
 pub fn Problem::constraint_count(Self) -> Int
+pub fn Problem::explain(Self) -> ExplainOutcome
 pub fn Problem::new() -> Self
 pub fn Problem::solve(Self) -> SolveOutcome
 pub fn Problem::solve_all(Self, Int) -> Result[(Array[Solution], SolveStats), ModelError]

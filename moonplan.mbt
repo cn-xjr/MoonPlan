@@ -23,6 +23,8 @@ pub(all) enum Constraint {
 pub(all) enum ModelError {
   EmptyName
   DuplicateName(String)
+  EmptyConstraintName
+  DuplicateConstraintName(String)
   EmptyDomain(String)
   DuplicateDomainValue(String, Int)
   ForeignVariable(String)
@@ -37,6 +39,8 @@ pub fn ModelError::message(self : ModelError) -> String {
   match self {
     EmptyName => "variable name must not be empty"
     DuplicateName(name) => "duplicate variable name: \{name}"
+    EmptyConstraintName => "constraint name must not be empty"
+    DuplicateConstraintName(name) => "duplicate constraint name: \{name}"
     EmptyDomain(name) => "variable \{name} has an empty domain"
     DuplicateDomainValue(name, value) =>
       "variable \{name} repeats domain value \{value}"
@@ -56,10 +60,16 @@ struct VariableSpec {
 } derive(Eq, Debug)
 
 ///|
+struct ConstraintSpec {
+  name : String?
+  constraint : Constraint
+}
+
+///|
 /// A finite-domain constraint problem.
 pub struct Problem {
   variables : Array[VariableSpec]
-  constraints : Array[Constraint]
+  constraints : Array[ConstraintSpec]
 }
 
 ///|
@@ -146,6 +156,15 @@ pub fn Problem::add_constraint(
   self : Problem,
   constraint : Constraint,
 ) -> Result[Unit, ModelError] {
+  self.add_constraint_spec(None, constraint)
+}
+
+///|
+fn Problem::add_constraint_spec(
+  self : Problem,
+  name : String?,
+  constraint : Constraint,
+) -> Result[Unit, ModelError] {
   match constraint {
     CountAtMost(_, _, limit) if limit < 0 =>
       return Err(InvalidConstraintLimit(limit))
@@ -160,8 +179,29 @@ pub fn Problem::add_constraint(
       return Err(ForeignVariable(variable.name))
     }
   }
-  self.constraints.push(constraint)
+  self.constraints.push({ name, constraint, })
   Ok(())
+}
+
+///|
+/// Add a checked constraint with a stable, human-readable name.
+///
+/// Names must be unique within a problem so conflict reports can map solver
+/// rules back to their business meaning.
+pub fn Problem::add_named_constraint(
+  self : Problem,
+  name : String,
+  constraint : Constraint,
+) -> Result[Unit, ModelError] {
+  if name.length() == 0 {
+    return Err(EmptyConstraintName)
+  }
+  for spec in self.constraints {
+    if spec.name == Some(name) {
+      return Err(DuplicateConstraintName(name))
+    }
+  }
+  self.add_constraint_spec(Some(name), constraint)
 }
 
 ///|
@@ -329,8 +369,8 @@ fn all_constraints_possible(
   problem : Problem,
   assignment : Array[Int?],
 ) -> Bool {
-  for constraint in problem.constraints {
-    if !constraint_possible(problem, assignment, constraint) {
+  for spec in problem.constraints {
+    if !constraint_possible(problem, assignment, spec.constraint) {
       return false
     }
   }
