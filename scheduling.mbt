@@ -52,6 +52,7 @@ pub(all) enum RosterError {
   DuplicateWorkerId(Int)
   DuplicateShiftId(Int)
   NoEligibleWorker(Int, String)
+  InsufficientSlotCapacity(Int, Int, Int)
   InvalidCandidateLimit(Int)
   InvalidModel(ModelError)
   Unsatisfiable(SolveStats)
@@ -65,6 +66,8 @@ pub fn RosterError::message(self : RosterError) -> String {
     DuplicateShiftId(id) => "duplicate shift id: \{id}"
     NoEligibleWorker(id, name) =>
       "shift \{id} (\{name}) has no worker with the required skill and availability"
+    InsufficientSlotCapacity(slot, required, assignable) =>
+      "slot \{slot} requires \{required} workers, but at most \{assignable} shifts can be covered"
     InvalidCandidateLimit(limit) =>
       "candidate limit must be positive, got \{limit}"
     InvalidModel(error) => "invalid constraint model: \{error.message()}"
@@ -137,13 +140,15 @@ fn build_roster_model(
   workers : Array[Worker],
   shifts : Array[Shift],
 ) -> Result[RosterModel, RosterError] {
-  match duplicate_worker_id(workers) {
-    Some(id) => return Err(DuplicateWorkerId(id))
-    None => ()
-  }
-  match duplicate_shift_id(shifts) {
-    Some(id) => return Err(DuplicateShiftId(id))
-    None => ()
+  let analysis = analyze_roster(workers, shifts)
+  if analysis.issues.length() > 0 {
+    match analysis.issues[0] {
+      DuplicateWorkerIdFound(id) => return Err(DuplicateWorkerId(id))
+      DuplicateShiftIdFound(id) => return Err(DuplicateShiftId(id))
+      NoEligibleWorkerFound(id, name) => return Err(NoEligibleWorker(id, name))
+      SlotCoverageShortfall(slot, required, assignable) =>
+        return Err(InsufficientSlotCapacity(slot, required, assignable))
+    }
   }
   let problem = Problem::new()
   let variables : Array[Var] = []

@@ -46,7 +46,8 @@ test "detects same-slot capacity conflicts" {
     { id: 2, name: "B", slot: 9, required_skill: "support", },
   ]
   assert_true(
-    @moonplan.build_roster(workers, shifts) is Err(@moonplan.Unsatisfiable(_)),
+    @moonplan.build_roster(workers, shifts)
+    is Err(@moonplan.InsufficientSlotCapacity(9, 2, 1)),
   )
 }
 

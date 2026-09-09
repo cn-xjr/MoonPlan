@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn analyze_roster(Array[Worker], Array[Shift]) -> RosterAnalysis
+
 pub fn build_balanced_roster(Array[Worker], Array[Shift], Int) -> Result[OptimizedRoster, RosterError]
 
 pub fn build_roster(Array[Worker], Array[Shift]) -> Result[Roster, RosterError]
@@ -72,6 +74,12 @@ pub(all) struct Roster {
 pub fn Roster::assignment_count(Self, Int) -> Int
 pub fn Roster::worker_for_shift(Self, Int) -> Worker?
 
+pub(all) struct RosterAnalysis {
+  issues : Array[RosterIssue]
+} derive(Eq, @debug.Debug)
+pub fn RosterAnalysis::is_feasible(Self) -> Bool
+pub fn RosterAnalysis::summary(Self) -> String
+
 pub(all) struct RosterEntry {
   shift : Shift
   worker : Worker
@@ -81,11 +89,20 @@ pub(all) enum RosterError {
   DuplicateWorkerId(Int)
   DuplicateShiftId(Int)
   NoEligibleWorker(Int, String)
+  InsufficientSlotCapacity(Int, Int, Int)
   InvalidCandidateLimit(Int)
   InvalidModel(ModelError)
   Unsatisfiable(SolveStats)
 } derive(Eq, @debug.Debug)
 pub fn RosterError::message(Self) -> String
+
+pub(all) enum RosterIssue {
+  DuplicateWorkerIdFound(Int)
+  DuplicateShiftIdFound(Int)
+  NoEligibleWorkerFound(Int, String)
+  SlotCoverageShortfall(Int, Int, Int)
+} derive(Eq, @debug.Debug)
+pub fn RosterIssue::message(Self) -> String
 
 pub(all) struct Shift {
   id : Int
