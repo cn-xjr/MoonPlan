@@ -16,15 +16,18 @@ fn main {
     { id: 3, name: "Late support", slot: 10, required_skill: "support", },
   ]
   println("MoonPlan staffing demo")
-  match @moonplan.build_roster(workers, shifts) {
+  match @moonplan.build_balanced_roster(workers, shifts, 64) {
     Err(error) => println("No feasible schedule: \{error.message()}")
-    Ok(roster) => {
-      for entry in roster.entries {
+    Ok(result) => {
+      for entry in result.roster.entries {
         println(
           "  slot \{entry.shift.slot} / \{entry.shift.name}: \{entry.worker.name}",
         )
       }
-      println("searched \{roster.stats.nodes} assignments")
+      println(
+        "balance spread: \{result.balance.spread}; candidates: \{result.candidates_evaluated}",
+      )
+      println("searched \{result.roster.stats.nodes} assignments")
     }
   }
 }

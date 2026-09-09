@@ -49,3 +49,32 @@ test "detects same-slot capacity conflicts" {
     @moonplan.build_roster(workers, shifts) is Err(@moonplan.Unsatisfiable(_)),
   )
 }
+
+///|
+test "balances workload across feasible candidates" {
+  let workers : Array[@moonplan.Worker] = [
+    { id: 1, name: "Ada", skills: ["support"], available_slots: [9, 10, 11], },
+    { id: 2, name: "Bo", skills: ["support"], available_slots: [9, 10, 11], },
+  ]
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+    { id: 2, name: "Midday", slot: 10, required_skill: "support", },
+    { id: 3, name: "Evening", slot: 11, required_skill: "support", },
+  ]
+  let first = @moonplan.build_roster(workers, shifts).unwrap()
+  assert_eq(first.assignment_count(1), 3)
+  let optimized = @moonplan.build_balanced_roster(workers, shifts, 8).unwrap()
+  assert_eq(optimized.balance.spread, 1)
+  assert_eq(optimized.balance.maximum_load, 2)
+  assert_eq(optimized.candidates_evaluated, 8)
+  assert_eq(optimized.roster.assignment_count(1), 2)
+  assert_eq(optimized.roster.assignment_count(2), 1)
+}
+
+///|
+test "rejects a non-positive optimization budget" {
+  assert_true(
+    @moonplan.build_balanced_roster(demo_workers(), [], 0)
+    is Err(@moonplan.InvalidCandidateLimit(0)),
+  )
+}

@@ -26,7 +26,8 @@ MoonPlan staffing demo
   slot 9 / Reception: Ada
   slot 9 / Help desk: Bo
   slot 10 / Late support: Chen
-searched 3 assignments
+balance spread: 0; candidates: 3
+searched 6 assignments
 ```
 
 ## 当前能力
@@ -38,6 +39,7 @@ searched 3 assignments
 - 多解枚举，以及搜索节点、回溯次数等诊断数据
 - `Worker`、`Shift`、`Roster` 排班领域模型
 - 技能、可用时间和同一时段容量冲突检查
+- 有界候选搜索与工作量均衡评分
 - 无解、无合格人员和重复标识等明确错误
 
 ## 架构
@@ -68,7 +70,7 @@ moon run cmd/main
 ## 下一阶段
 
 1. 可撤销域与传播队列，提升大规模模型的搜索效率。
-2. 软约束和加权目标，支持偏好、公平性与成本优化。
+2. 扩展软约束和加权目标，在现有工作量均衡基础上支持偏好与成本优化。
 3. 不可满足核心和自然语言冲突说明，回答“为什么排不出来”。
 4. MoonBit/Wasm 可视化工作台，展示排班结果、搜索树和修复建议。
 5. 可复现排班基准与跨后端一致性验证。

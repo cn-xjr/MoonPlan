@@ -31,11 +31,28 @@ pub(all) struct Roster {
 } derive(Eq, Debug)
 
 ///|
+/// A workload balance score. Lower spread and lower maximum load are better.
+pub(all) struct BalanceScore {
+  minimum_load : Int
+  maximum_load : Int
+  spread : Int
+} derive(Eq, Debug)
+
+///|
+/// The best roster found within a bounded candidate search.
+pub(all) struct OptimizedRoster {
+  roster : Roster
+  balance : BalanceScore
+  candidates_evaluated : Int
+} derive(Eq, Debug)
+
+///|
 /// Domain-specific scheduling failures.
 pub(all) enum RosterError {
   DuplicateWorkerId(Int)
   DuplicateShiftId(Int)
   NoEligibleWorker(Int, String)
+  InvalidCandidateLimit(Int)
   InvalidModel(ModelError)
   Unsatisfiable(SolveStats)
 } derive(Eq, Debug)
@@ -48,10 +65,18 @@ pub fn RosterError::message(self : RosterError) -> String {
     DuplicateShiftId(id) => "duplicate shift id: \{id}"
     NoEligibleWorker(id, name) =>
       "shift \{id} (\{name}) has no worker with the required skill and availability"
+    InvalidCandidateLimit(limit) =>
+      "candidate limit must be positive, got \{limit}"
     InvalidModel(error) => "invalid constraint model: \{error.message()}"
     Unsatisfiable(stats) =>
       "no feasible roster after \{stats.nodes} assignments and \{stats.backtracks} backtracks"
   }
+}
+
+///|
+priv struct RosterModel {
+  problem : Problem
+  variables : Array[Var]
 }
 
 ///|
@@ -108,15 +133,10 @@ fn duplicate_shift_id(shifts : Array[Shift]) -> Int? {
 }
 
 ///|
-/// Assign one eligible worker to every shift.
-///
-/// Workers may serve again in a different slot, but cannot cover two shifts in
-/// the same slot. Skill and availability rules are compiled into variable
-/// domains before search starts.
-pub fn build_roster(
+fn build_roster_model(
   workers : Array[Worker],
   shifts : Array[Shift],
-) -> Result[Roster, RosterError] {
+) -> Result[RosterModel, RosterError] {
   match duplicate_worker_id(workers) {
     Some(id) => return Err(DuplicateWorkerId(id))
     None => ()
@@ -155,22 +175,54 @@ pub fn build_roster(
       }
     }
   }
-  match problem.solve() {
-    Unsatisfied(stats) => Err(Unsatisfiable(stats))
-    Satisfied(solution, stats) => {
-      let entries : Array[RosterEntry] = []
-      for index = 0; index < shifts.length(); index = index + 1 {
-        match solution.get(variables[index].name) {
-          Some(worker_index) =>
-            entries.push({
-              shift: shifts[index],
-              worker: workers[worker_index],
-            })
-          None => ()
-        }
-      }
-      Ok({ entries, stats, })
+  Ok({ problem, variables, })
+}
+
+///|
+fn roster_from_solution(
+  workers : Array[Worker],
+  shifts : Array[Shift],
+  variables : Array[Var],
+  solution : Solution,
+  stats : SolveStats,
+) -> Roster {
+  let entries : Array[RosterEntry] = []
+  for index = 0; index < shifts.length(); index = index + 1 {
+    match solution.get(variables[index].name) {
+      Some(worker_index) =>
+        entries.push({ shift: shifts[index], worker: workers[worker_index], })
+      None => ()
     }
+  }
+  { entries, stats, }
+}
+
+///|
+/// Assign one eligible worker to every shift.
+///
+/// Workers may serve again in a different slot, but cannot cover two shifts in
+/// the same slot. Skill and availability rules are compiled into variable
+/// domains before search starts.
+pub fn build_roster(
+  workers : Array[Worker],
+  shifts : Array[Shift],
+) -> Result[Roster, RosterError] {
+  match build_roster_model(workers, shifts) {
+    Err(error) => Err(error)
+    Ok(model) =>
+      match model.problem.solve() {
+        Unsatisfied(stats) => Err(Unsatisfiable(stats))
+        Satisfied(solution, stats) =>
+          Ok(
+            roster_from_solution(
+              workers,
+              shifts,
+              model.variables,
+              solution,
+              stats,
+            ),
+          )
+      }
   }
 }
 
@@ -183,4 +235,100 @@ pub fn Roster::worker_for_shift(self : Roster, shift_id : Int) -> Worker? {
     }
   }
   None
+}
+
+///|
+/// Count how many shifts were assigned to a worker id.
+pub fn Roster::assignment_count(self : Roster, worker_id : Int) -> Int {
+  let mut count = 0
+  for entry in self.entries {
+    if entry.worker.id == worker_id {
+      count = count + 1
+    }
+  }
+  count
+}
+
+///|
+fn balance_score(workers : Array[Worker], roster : Roster) -> BalanceScore {
+  if workers.length() == 0 {
+    return { minimum_load: 0, maximum_load: 0, spread: 0, }
+  }
+  let mut minimum_load = roster.entries.length()
+  let mut maximum_load = 0
+  for worker in workers {
+    let load = roster.assignment_count(worker.id)
+    if load < minimum_load {
+      minimum_load = load
+    }
+    if load > maximum_load {
+      maximum_load = load
+    }
+  }
+  { minimum_load, maximum_load, spread: maximum_load - minimum_load, }
+}
+
+///|
+fn better_balance(candidate : BalanceScore, current : BalanceScore) -> Bool {
+  candidate.spread < current.spread ||
+  (
+    candidate.spread == current.spread &&
+    candidate.maximum_load < current.maximum_load
+  )
+}
+
+///|
+/// Find a feasible roster with the smallest workload spread among a bounded
+/// number of deterministic candidates.
+///
+/// The limit makes optimization cost explicit. Increasing it may discover a
+/// fairer roster, while the returned candidate count records the evidence used
+/// for the decision.
+pub fn build_balanced_roster(
+  workers : Array[Worker],
+  shifts : Array[Shift],
+  candidate_limit : Int,
+) -> Result[OptimizedRoster, RosterError] {
+  if candidate_limit <= 0 {
+    return Err(InvalidCandidateLimit(candidate_limit))
+  }
+  match build_roster_model(workers, shifts) {
+    Err(error) => Err(error)
+    Ok(model) =>
+      match model.problem.solve_all(candidate_limit) {
+        Err(error) => Err(InvalidModel(error))
+        Ok((solutions, stats)) => {
+          if solutions.length() == 0 {
+            return Err(Unsatisfiable(stats))
+          }
+          let mut best_roster = roster_from_solution(
+            workers,
+            shifts,
+            model.variables,
+            solutions[0],
+            stats,
+          )
+          let mut best_balance = balance_score(workers, best_roster)
+          for index = 1; index < solutions.length(); index = index + 1 {
+            let candidate = roster_from_solution(
+              workers,
+              shifts,
+              model.variables,
+              solutions[index],
+              stats,
+            )
+            let candidate_balance = balance_score(workers, candidate)
+            if better_balance(candidate_balance, best_balance) {
+              best_roster = candidate
+              best_balance = candidate_balance
+            }
+          }
+          Ok({
+            roster: best_roster,
+            balance: best_balance,
+            candidates_evaluated: solutions.length(),
+          })
+        }
+      }
+  }
 }

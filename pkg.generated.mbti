@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn build_balanced_roster(Array[Worker], Array[Shift], Int) -> Result[OptimizedRoster, RosterError]
+
 pub fn build_roster(Array[Worker], Array[Shift]) -> Result[Roster, RosterError]
 
 pub fn int_domain(Int, Int) -> Array[Int]
@@ -13,6 +15,12 @@ pub fn int_domain(Int, Int) -> Array[Int]
 // Errors
 
 // Types and methods
+pub(all) struct BalanceScore {
+  minimum_load : Int
+  maximum_load : Int
+  spread : Int
+} derive(Eq, @debug.Debug)
+
 pub(all) struct Binding {
   name : String
   value : Int
@@ -39,6 +47,12 @@ pub(all) enum ModelError {
 } derive(Eq, @debug.Debug)
 pub fn ModelError::message(Self) -> String
 
+pub(all) struct OptimizedRoster {
+  roster : Roster
+  balance : BalanceScore
+  candidates_evaluated : Int
+} derive(Eq, @debug.Debug)
+
 pub struct Problem {
   variables : Array[VariableSpec]
   constraints : Array[Constraint]
@@ -55,6 +69,7 @@ pub(all) struct Roster {
   entries : Array[RosterEntry]
   stats : SolveStats
 } derive(Eq, @debug.Debug)
+pub fn Roster::assignment_count(Self, Int) -> Int
 pub fn Roster::worker_for_shift(Self, Int) -> Worker?
 
 pub(all) struct RosterEntry {
@@ -66,6 +81,7 @@ pub(all) enum RosterError {
   DuplicateWorkerId(Int)
   DuplicateShiftId(Int)
   NoEligibleWorker(Int, String)
+  InvalidCandidateLimit(Int)
   InvalidModel(ModelError)
   Unsatisfiable(SolveStats)
 } derive(Eq, @debug.Debug)
