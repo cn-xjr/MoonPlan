@@ -7,13 +7,14 @@ fn main {
       id: 30,
       name: "Chen",
       skills: ["frontdesk", "support"],
-      available_slots: [9, 10],
+      available_slots: [9, 10, 11],
     },
   ]
   let shifts : Array[@moonplan.Shift] = [
     { id: 1, name: "Reception", slot: 9, required_skill: "frontdesk", },
     { id: 2, name: "Help desk", slot: 9, required_skill: "support", },
     { id: 3, name: "Late support", slot: 10, required_skill: "support", },
+    { id: 4, name: "Night support", slot: 11, required_skill: "support", },
   ]
   println("MoonPlan staffing demo")
   match @moonplan.build_balanced_roster(workers, shifts, 64) {
@@ -29,5 +30,9 @@ fn main {
       )
       println("searched \{result.roster.stats.nodes} assignments")
     }
+  }
+  match @moonplan.suggest_capped_roster_repairs(workers, shifts, 1) {
+    Err(error) => println("Could not analyze repairs: \{error.message()}")
+    Ok(plan) => println("repair suggestion: \{plan.summary()}")
   }
 }

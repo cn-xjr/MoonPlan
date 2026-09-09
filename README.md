@@ -10,13 +10,13 @@ MoonPlan 是一个纯 MoonBit 实现的有限域约束求解与排班工具包�
 
 ## 一个真实问题
 
-假设早上 9 点同时需要前台和技术支持，10 点还需要一名技术支持。三名工作人员的技能和可用时间不同：
+假设早上 9 点同时需要前台和技术支持，10 点和 11 点还各需要一名技术支持。三名工作人员的技能和可用时间不同：
 
 | 工作人员 | 技能 | 可用时段 |
 | --- | --- | --- |
 | Ada | 前台 | 09:00 |
 | Bo | 技术支持 | 09:00 |
-| Chen | 前台、技术支持 | 09:00、10:00 |
+| Chen | 前台、技术支持 | 09:00、10:00、11:00 |
 
 MoonPlan 会先根据技能和可用时间缩小候选域，再保证同一时段的岗位不会分配给同一个人。运行示例：
 
@@ -26,8 +26,10 @@ MoonPlan staffing demo
   slot 9 / Reception: Ada
   slot 9 / Help desk: Bo
   slot 10 / Late support: Chen
-balance spread: 0; candidates: 3
-searched 6 assignments
+  slot 11 / Night support: Chen
+balance spread: 1; candidates: 3
+searched 7 assignments
+repair suggestion: raise the per-worker workload limit from 1 to 2
 ```
 
 ## 当前能力
@@ -38,6 +40,7 @@ searched 6 assignments
 - MRV（最少剩余值）变量选择和确定性回溯搜索
 - 多解枚举，以及搜索节点、回溯次数等诊断数据
 - 命名约束与不可满足模型的最小冲突集解释
+- 排班预检、冲突证据与可执行修复建议
 - `Worker`、`Shift`、`Roster` 排班领域模型
 - 技能、可用时间和同一时段容量冲突检查
 - 有界候选搜索与工作量均衡评分
@@ -58,7 +61,7 @@ flowchart LR
 
 项目保持求解内核与业务建模分离：应用可以直接使用排班 API，也可以使用底层约束构建课程表、资源配置或谜题求解器。
 
-使用 `add_named_constraint` 可以为业务规则保留稳定名称。模型无解时，`Problem::explain` 会返回一个不可再删减的冲突集合；其中每项包含原始约束序号、名称和类型化约束，便于界面或领域层生成可读说明。诊断过程不会修改原模型，并通过 `solver_runs` 明确记录额外求解成本。
+使用 `add_named_constraint` 可以为业务规则保留稳定名称。模型无解时，`Problem::explain` 会返回一个不可再删减的冲突集合；其中每项包含原始约束序号、名称和类型化约束，便于界面或领域层生成可读说明。`suggest_capped_roster_repairs` 进一步把预检问题和求解器冲突转换成增补合格人员、增加时段容量或提高工作量上限等建议，并计算可行的最小统一上限。
 
 ## 快速开始
 
@@ -76,7 +79,7 @@ moon run cmd/main
 
 1. 可撤销域与传播队列，提升大规模模型的搜索效率。
 2. 扩展软约束和加权目标，在现有工作量均衡基础上支持偏好与成本优化。
-3. 将通用最小冲突集映射成排班修复建议。
+3. 扩展修复建议，支持休息间隔、连续工作时长和偏好冲突。
 4. MoonBit/Wasm 可视化工作台，展示排班结果、搜索树和修复建议。
 5. 可复现排班基准与跨后端一致性验证。
 

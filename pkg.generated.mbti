@@ -16,6 +16,8 @@ pub fn build_roster(Array[Worker], Array[Shift]) -> Result[Roster, RosterError]
 
 pub fn int_domain(Int, Int) -> Array[Int]
 
+pub fn suggest_capped_roster_repairs(Array[Worker], Array[Shift], Int) -> Result[RosterRepairPlan, RosterError]
+
 // Errors
 
 // Types and methods
@@ -130,6 +132,23 @@ pub(all) enum RosterIssue {
   SlotCoverageShortfall(Int, Int, Int)
 } derive(Eq, @debug.Debug)
 pub fn RosterIssue::message(Self) -> String
+
+pub(all) enum RosterRepair {
+  RenameWorkerId(Int)
+  RenameShiftId(Int)
+  AddQualifiedWorker(Int, String, String)
+  AddSlotCapacity(Int, Int)
+  RaiseWorkloadLimit(Int, Int)
+} derive(Eq, @debug.Debug)
+pub fn RosterRepair::message(Self) -> String
+
+pub(all) struct RosterRepairPlan {
+  issues : Array[RosterIssue]
+  conflict : ConflictReport?
+  repairs : Array[RosterRepair]
+} derive(Eq, @debug.Debug)
+pub fn RosterRepairPlan::is_feasible(Self) -> Bool
+pub fn RosterRepairPlan::summary(Self) -> String
 
 pub(all) struct Shift {
   id : Int

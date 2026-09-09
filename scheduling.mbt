@@ -86,6 +86,30 @@ priv struct RosterModel {
 }
 
 ///|
+fn add_workload_constraints(
+  model : RosterModel,
+  workers : Array[Worker],
+  max_shifts_per_worker : Int,
+) -> Result[Unit, RosterError] {
+  if model.variables.length() == 0 {
+    return Ok(())
+  }
+  for worker_index = 0
+      worker_index < workers.length()
+      worker_index = worker_index + 1 {
+    match
+      model.problem.add_named_constraint(
+        "worker-\{workers[worker_index].id}:workload-cap",
+        CountAtMost(model.variables.copy(), worker_index, max_shifts_per_worker),
+      ) {
+      Ok(_) => ()
+      Err(error) => return Err(InvalidModel(error))
+    }
+  }
+  Ok(())
+}
+
+///|
 fn string_member(values : Array[String], expected : String) -> Bool {
   for value in values {
     if value == expected {
@@ -254,23 +278,9 @@ pub fn build_capped_roster(
   match build_roster_model(workers, shifts) {
     Err(error) => Err(error)
     Ok(model) => {
-      if model.variables.length() > 0 {
-        for worker_index = 0
-            worker_index < workers.length()
-            worker_index = worker_index + 1 {
-          match
-            model.problem.add_named_constraint(
-              "worker-\{workers[worker_index].id}:workload-cap",
-              CountAtMost(
-                model.variables.copy(),
-                worker_index,
-                max_shifts_per_worker,
-              ),
-            ) {
-            Ok(_) => ()
-            Err(error) => return Err(InvalidModel(error))
-          }
-        }
+      match add_workload_constraints(model, workers, max_shifts_per_worker) {
+        Err(error) => return Err(error)
+        Ok(_) => ()
       }
       match model.problem.solve() {
         Unsatisfied(stats) => Err(Unsatisfiable(stats))
