@@ -45,7 +45,7 @@ pub(all) struct BalanceScore {
 pub(all) struct Binding {
   name : String
   value : Int
-} derive(Eq, @debug.Debug)
+} derive(Eq, ToJson, @debug.Debug)
 
 pub(all) struct ConflictItem {
   index : Int
@@ -87,6 +87,7 @@ pub(all) enum ModelError {
   EmptyConstraint
   InvalidConstraintLimit(Int)
   InvalidSolutionLimit(Int)
+  InvalidTraceLimit(Int)
 } derive(Eq, @debug.Debug)
 pub fn ModelError::message(Self) -> String
 
@@ -115,6 +116,7 @@ pub fn Problem::explain(Self) -> ExplainOutcome
 pub fn Problem::new() -> Self
 pub fn Problem::solve(Self) -> SolveOutcome
 pub fn Problem::solve_all(Self, Int) -> Result[(Array[Solution], SolveStats), ModelError]
+pub fn Problem::solve_with_trace(Self, Int) -> Result[SolveTrace, ModelError]
 pub fn Problem::variable_count(Self) -> Int
 
 pub(all) struct Roster {
@@ -198,6 +200,14 @@ pub(all) struct RosterRequest {
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 pub fn RosterRequest::solve(Self) -> Result[PreferredRoster, RosterError]
 
+pub(all) enum SearchEvent {
+  TryValue(String, Int, Int)
+  DeadEnd(String, Int)
+  Backtrack(String, Int, Int)
+  SolutionFound(Int, Int)
+} derive(Eq, ToJson, @debug.Debug)
+pub fn SearchEvent::message(Self) -> String
+
 pub(all) struct Shift {
   id : Int
   name : String
@@ -207,18 +217,24 @@ pub(all) struct Shift {
 
 pub(all) struct Solution {
   bindings : Array[Binding]
-} derive(Eq, @debug.Debug)
+} derive(Eq, ToJson, @debug.Debug)
 pub fn Solution::get(Self, String) -> Int?
 
 pub(all) enum SolveOutcome {
   Satisfied(Solution, SolveStats)
   Unsatisfied(SolveStats)
-} derive(Eq, @debug.Debug)
+} derive(Eq, ToJson, @debug.Debug)
 
 pub(all) struct SolveStats {
   nodes : Int
   backtracks : Int
   solutions : Int
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct SolveTrace {
+  outcome : SolveOutcome
+  events : Array[SearchEvent]
+  truncated : Bool
 } derive(Eq, ToJson, @debug.Debug)
 
 pub(all) struct Var {

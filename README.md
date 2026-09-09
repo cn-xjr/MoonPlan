@@ -39,6 +39,7 @@ repair suggestion: raise the per-worker workload limit from 1 to 2
 - `LessThan`、`AllDifferent`、`SumEquals`、`CountAtMost`
 - MRV（最少剩余值）变量选择和确定性回溯搜索
 - 多解枚举，以及搜索节点、回溯次数等诊断数据
+- 有界确定性搜索轨迹，可导出 JSON 供搜索树可视化
 - 命名约束与不可满足模型的最小冲突集解释
 - 排班预检、冲突证据与可执行修复建议
 - `Worker`、`Shift`、`Roster` 排班领域模型
@@ -83,7 +84,7 @@ moon run cmd/main
 1. 可撤销域与传播队列，提升大规模模型的搜索效率。
 2. 扩展加权目标，在现有分配偏好基础上支持连续工作成本和多级目标。
 3. 扩展修复建议，支持休息间隔、连续工作时长和偏好冲突。
-4. 基于现有 JSON 边界构建 MoonBit/Wasm 可视化工作台。
+4. 基于现有 JSON 边界和搜索事件流构建 MoonBit/Wasm 可视化工作台。
 5. 可复现排班基准与跨后端一致性验证。
 
 完整设计、不变量和里程碑见 [DESIGN.md](DESIGN.md)。可执行文档版本见 [README.mbt.md](README.mbt.md)。

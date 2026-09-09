@@ -31,6 +31,7 @@ pub(all) enum ModelError {
   EmptyConstraint
   InvalidConstraintLimit(Int)
   InvalidSolutionLimit(Int)
+  InvalidTraceLimit(Int)
 } derive(Eq, Debug)
 
 ///|
@@ -50,6 +51,8 @@ pub fn ModelError::message(self : ModelError) -> String {
       "constraint limit must not be negative, got \{limit}"
     InvalidSolutionLimit(limit) =>
       "solution limit must be positive, got \{limit}"
+    InvalidTraceLimit(limit) =>
+      "trace event limit must be positive, got \{limit}"
   }
 }
 
@@ -209,13 +212,13 @@ pub fn Problem::add_named_constraint(
 pub(all) struct Binding {
   name : String
   value : Int
-} derive(Eq, Debug)
+} derive(Eq, Debug, ToJson)
 
 ///|
 /// A complete assignment satisfying every constraint.
 pub(all) struct Solution {
   bindings : Array[Binding]
-} derive(Eq, Debug)
+} derive(Eq, Debug, ToJson)
 
 ///|
 /// Look up a value by variable name.
@@ -241,7 +244,7 @@ pub(all) struct SolveStats {
 pub(all) enum SolveOutcome {
   Satisfied(Solution, SolveStats)
   Unsatisfied(SolveStats)
-} derive(Eq, Debug)
+} derive(Eq, Debug, ToJson)
 
 ///|
 priv struct SearchCounters {
@@ -437,6 +440,8 @@ fn search(
   counters : SearchCounters,
   solutions : Array[Solution],
   limit : Int,
+  recorder : TraceRecorder?,
+  depth : Int,
 ) -> Unit {
   if solutions.length() >= limit {
     return
@@ -445,10 +450,15 @@ fn search(
     None =>
       if all_constraints_possible(problem, assignment) {
         solutions.push(make_solution(problem, assignment))
+        record_search_event(recorder, SolutionFound(solutions.length(), depth))
       }
     Some((index, values)) => {
       if values.length() == 0 {
         counters.backtracks = counters.backtracks + 1
+        record_search_event(
+          recorder,
+          DeadEnd(problem.variables[index].variable.name, depth),
+        )
         return
       }
       let before = solutions.length()
@@ -456,10 +466,24 @@ fn search(
         if solutions.length() >= limit {
           break
         }
+        let branch_before = solutions.length()
+        let variable_name = problem.variables[index].variable.name
+        record_search_event(recorder, TryValue(variable_name, value, depth))
         assignment[index] = Some(value)
         counters.nodes = counters.nodes + 1
-        search(problem, assignment, counters, solutions, limit)
+        search(
+          problem,
+          assignment,
+          counters,
+          solutions,
+          limit,
+          recorder,
+          depth + 1,
+        )
         assignment[index] = None
+        if solutions.length() == branch_before {
+          record_search_event(recorder, Backtrack(variable_name, value, depth))
+        }
       }
       if solutions.length() == before {
         counters.backtracks = counters.backtracks + 1
@@ -480,7 +504,7 @@ pub fn Problem::solve_all(
   let assignment : Array[Int?] = Array::make(self.variables.length(), None)
   let counters : SearchCounters = { nodes: 0, backtracks: 0, }
   let solutions : Array[Solution] = []
-  search(self, assignment, counters, solutions, limit)
+  search(self, assignment, counters, solutions, limit, None, 0)
   Ok(
     (
       solutions,
