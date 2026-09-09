@@ -12,6 +12,8 @@ pub fn build_balanced_roster(Array[Worker], Array[Shift], Int) -> Result[Optimiz
 
 pub fn build_capped_roster(Array[Worker], Array[Shift], Int) -> Result[Roster, RosterError]
 
+pub fn build_preferred_roster(Array[Worker], Array[Shift], RosterPolicy, Array[AssignmentPenalty], Int) -> Result[PreferredRoster, RosterError]
+
 pub fn build_roster(Array[Worker], Array[Shift]) -> Result[Roster, RosterError]
 
 pub fn build_roster_with_policy(Array[Worker], Array[Shift], RosterPolicy) -> Result[Roster, RosterError]
@@ -23,6 +25,12 @@ pub fn suggest_capped_roster_repairs(Array[Worker], Array[Shift], Int) -> Result
 // Errors
 
 // Types and methods
+pub(all) struct AssignmentPenalty {
+  worker_id : Int
+  shift_id : Int
+  penalty : Int
+} derive(Eq, @debug.Debug)
+
 pub(all) struct BalanceScore {
   minimum_load : Int
   maximum_load : Int
@@ -83,6 +91,13 @@ pub(all) struct OptimizedRoster {
   candidates_evaluated : Int
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PreferredRoster {
+  roster : Roster
+  total_penalty : Int
+  balance : BalanceScore
+  candidates_evaluated : Int
+} derive(Eq, @debug.Debug)
+
 pub struct Problem {
   variables : Array[VariableSpec]
   constraints : Array[ConstraintSpec]
@@ -123,6 +138,10 @@ pub(all) enum RosterError {
   InvalidCandidateLimit(Int)
   InvalidWorkloadLimit(Int)
   InvalidRestGap(Int)
+  UnknownPenaltyWorker(Int)
+  UnknownPenaltyShift(Int)
+  DuplicateAssignmentPenalty(Int, Int)
+  InvalidAssignmentPenalty(Int, Int, Int)
   InvalidModel(ModelError)
   Unsatisfiable(SolveStats)
 } derive(Eq, @debug.Debug)

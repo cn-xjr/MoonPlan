@@ -74,6 +74,10 @@ pub(all) enum RosterError {
   InvalidCandidateLimit(Int)
   InvalidWorkloadLimit(Int)
   InvalidRestGap(Int)
+  UnknownPenaltyWorker(Int)
+  UnknownPenaltyShift(Int)
+  DuplicateAssignmentPenalty(Int, Int)
+  InvalidAssignmentPenalty(Int, Int, Int)
   InvalidModel(ModelError)
   Unsatisfiable(SolveStats)
 } derive(Eq, Debug)
@@ -93,6 +97,14 @@ pub fn RosterError::message(self : RosterError) -> String {
     InvalidWorkloadLimit(limit) =>
       "workload limit must not be negative, got \{limit}"
     InvalidRestGap(gap) => "minimum slot gap must not be negative, got \{gap}"
+    UnknownPenaltyWorker(id) =>
+      "assignment penalty refers to unknown worker id: \{id}"
+    UnknownPenaltyShift(id) =>
+      "assignment penalty refers to unknown shift id: \{id}"
+    DuplicateAssignmentPenalty(worker_id, shift_id) =>
+      "duplicate assignment penalty for worker \{worker_id} and shift \{shift_id}"
+    InvalidAssignmentPenalty(worker_id, shift_id, penalty) =>
+      "assignment penalty for worker \{worker_id} and shift \{shift_id} must not be negative, got \{penalty}"
     InvalidModel(error) => "invalid constraint model: \{error.message()}"
     Unsatisfiable(stats) =>
       "no feasible roster after \{stats.nodes} assignments and \{stats.backtracks} backtracks"
@@ -178,6 +190,17 @@ fn apply_roster_policy(
     None => ()
   }
   add_rest_constraints(model, shifts, policy.minimum_slot_gap)
+}
+
+///|
+fn validate_roster_policy(policy : RosterPolicy) -> Result[Unit, RosterError] {
+  if policy.minimum_slot_gap < 0 {
+    return Err(InvalidRestGap(policy.minimum_slot_gap))
+  }
+  match policy.max_shifts_per_worker {
+    Some(limit) if limit < 0 => Err(InvalidWorkloadLimit(limit))
+    _ => Ok(())
+  }
 }
 
 ///|
@@ -356,12 +379,9 @@ pub fn build_roster_with_policy(
   shifts : Array[Shift],
   policy : RosterPolicy,
 ) -> Result[Roster, RosterError] {
-  if policy.minimum_slot_gap < 0 {
-    return Err(InvalidRestGap(policy.minimum_slot_gap))
-  }
-  match policy.max_shifts_per_worker {
-    Some(limit) if limit < 0 => return Err(InvalidWorkloadLimit(limit))
-    _ => ()
+  match validate_roster_policy(policy) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
   }
   match build_roster_model(workers, shifts) {
     Err(error) => Err(error)
