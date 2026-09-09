@@ -16,6 +16,7 @@ pub(all) enum Constraint {
   AllDifferent(Array[Var])
   SumEquals(Array[Var], Int)
   CountAtMost(Array[Var], Int, Int)
+  AllowedTuples(Array[Var], Array[Array[Int]])
 } derive(Eq, Debug)
 
 ///|
@@ -29,6 +30,10 @@ pub(all) enum ModelError {
   DuplicateDomainValue(String, Int)
   ForeignVariable(String)
   EmptyConstraint
+  EmptyTupleTable
+  InvalidTupleArity(Int, Int, Int)
+  TupleValueOutsideDomain(Int, String, Int)
+  DuplicateTuple(Int, Int)
   InvalidConstraintLimit(Int)
   InvalidSolutionLimit(Int)
   InvalidTraceLimit(Int)
@@ -47,6 +52,13 @@ pub fn ModelError::message(self : ModelError) -> String {
       "variable \{name} repeats domain value \{value}"
     ForeignVariable(name) => "constraint refers to unknown variable: \{name}"
     EmptyConstraint => "constraint must contain at least one variable"
+    EmptyTupleTable => "allowed tuple table must contain at least one row"
+    InvalidTupleArity(index, expected, actual) =>
+      "tuple \{index} must contain \{expected} values, got \{actual}"
+    TupleValueOutsideDomain(index, name, value) =>
+      "tuple \{index} uses value \{value} outside the domain of \{name}"
+    DuplicateTuple(first, duplicate) =>
+      "tuple \{duplicate} duplicates tuple \{first}"
     InvalidConstraintLimit(limit) =>
       "constraint limit must not be negative, got \{limit}"
     InvalidSolutionLimit(limit) =>
@@ -149,7 +161,26 @@ fn constraint_variables(constraint : Constraint) -> Array[Var] {
     | LessThan(left, right) => [left, right]
     AllDifferent(variables)
     | SumEquals(variables, _)
-    | CountAtMost(variables, _, _) => variables
+    | CountAtMost(variables, _, _)
+    | AllowedTuples(variables, _) => variables
+  }
+}
+
+///|
+fn stabilize_constraint(constraint : Constraint) -> Constraint {
+  match constraint {
+    AllDifferent(variables) => AllDifferent(variables.copy())
+    SumEquals(variables, target) => SumEquals(variables.copy(), target)
+    CountAtMost(variables, value, limit) =>
+      CountAtMost(variables.copy(), value, limit)
+    AllowedTuples(variables, tuples) => {
+      let stable_tuples : Array[Array[Int]] = []
+      for tuple in tuples {
+        stable_tuples.push(tuple.copy())
+      }
+      AllowedTuples(variables.copy(), stable_tuples)
+    }
+    _ => constraint
   }
 }
 
@@ -168,12 +199,13 @@ fn Problem::add_constraint_spec(
   name : String?,
   constraint : Constraint,
 ) -> Result[Unit, ModelError] {
-  match constraint {
+  let stable_constraint = stabilize_constraint(constraint)
+  match stable_constraint {
     CountAtMost(_, _, limit) if limit < 0 =>
       return Err(InvalidConstraintLimit(limit))
     _ => ()
   }
-  let variables = constraint_variables(constraint)
+  let variables = constraint_variables(stable_constraint)
   if variables.length() == 0 {
     return Err(EmptyConstraint)
   }
@@ -182,7 +214,43 @@ fn Problem::add_constraint_spec(
       return Err(ForeignVariable(variable.name))
     }
   }
-  self.constraints.push({ name, constraint, })
+  match stable_constraint {
+    AllowedTuples(tuple_variables, tuples) => {
+      if tuples.length() == 0 {
+        return Err(EmptyTupleTable)
+      }
+      for tuple_index = 0
+          tuple_index < tuples.length()
+          tuple_index = tuple_index + 1 {
+        let tuple = tuples[tuple_index]
+        if tuple.length() != tuple_variables.length() {
+          return Err(
+            InvalidTupleArity(
+              tuple_index,
+              tuple_variables.length(),
+              tuple.length(),
+            ),
+          )
+        }
+        for position = 0; position < tuple.length(); position = position + 1 {
+          let variable = tuple_variables[position]
+          let value = tuple[position]
+          if !domain_has(self.variables[variable.index].domain, value) {
+            return Err(
+              TupleValueOutsideDomain(tuple_index, variable.name, value),
+            )
+          }
+        }
+        for previous = 0; previous < tuple_index; previous = previous + 1 {
+          if tuples[previous] == tuple {
+            return Err(DuplicateTuple(previous, tuple_index))
+          }
+        }
+      }
+    }
+    _ => ()
+  }
+  self.constraints.push({ name, constraint: stable_constraint, })
   Ok(())
 }
 
@@ -363,6 +431,24 @@ fn constraint_possible(
         }
       }
       count <= limit
+    }
+    AllowedTuples(variables, tuples) => {
+      for tuple in tuples {
+        let mut compatible = true
+        for position = 0; position < variables.length(); position = position + 1 {
+          match assigned(assignment, variables[position]) {
+            Some(value) if value != tuple[position] => {
+              compatible = false
+              break
+            }
+            _ => ()
+          }
+        }
+        if compatible {
+          return true
+        }
+      }
+      false
     }
   }
 }

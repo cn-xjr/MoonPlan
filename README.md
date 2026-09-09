@@ -37,6 +37,7 @@ repair suggestion: raise the per-worker workload limit from 1 to 2
 - 有限域整数变量与严格的模型边界检查
 - `Equal`、`NotEqual`、`Different`、`OffsetDifferent`
 - `LessThan`、`AllDifferent`、`SumEquals`、`CountAtMost`
+- `AllowedTuples` 表约束，可表达轮班模板和任意兼容组合
 - MRV（最少剩余值）变量选择和确定性回溯搜索
 - 多解枚举，以及搜索节点、回溯次数等诊断数据
 - 有界确定性搜索轨迹，可导出 JSON 供搜索树可视化
@@ -81,7 +82,7 @@ moon run cmd/main
 
 ## 下一阶段
 
-1. 可撤销域与传播队列，提升大规模模型的搜索效率。
+1. 可撤销域与传播队列，提升现有计数和表约束的搜索效率。
 2. 扩展加权目标，在现有分配偏好基础上支持连续工作成本和多级目标。
 3. 扩展修复建议，支持休息间隔、连续工作时长和偏好冲突。
 4. 基于现有 JSON 边界和搜索事件流构建 MoonBit/Wasm 可视化工作台。

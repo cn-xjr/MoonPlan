@@ -15,6 +15,7 @@ MoonPlan 是一个使用纯 MoonBit 实现的**可解释有限域约束求解与
 - 有限域整数变量与稳定变量句柄
 - `Equal`、`NotEqual`、`Different`、`OffsetDifferent`
 - `LessThan`、`AllDifferent`、`SumEquals`、`CountAtMost`
+- `AllowedTuples` 轮班模板与任意兼容组合表约束
 - MRV 启发式、约束剪枝、确定性解枚举
 - 节点数、回溯数和解数量统计
 - `solve_with_trace` 有界确定性搜索事件与 JSON 导出
@@ -43,7 +44,7 @@ moon run cmd/main
 
 ## 路线图
 
-1. **求解器内核**：可撤销域、约束传播队列、degree/LCV 启发式、表约束和线性约束。
+1. **求解器内核**：可撤销域、约束传播队列、degree/LCV 启发式和线性约束。
 2. **真实排班层**：班次、人员、技能、工作量上限、最小休息间隔、分配偏好与连续工作成本。
 3. **优化与解释**：将现有均衡评分、冲突集和基础修复建议扩展为分支定界、加权目标与复杂规则修复。
 4. **可视化工作台**：在现有 JSON 边界和搜索事件流上接入 Wasm 求解、甘特图/日历视图与交互解释。
