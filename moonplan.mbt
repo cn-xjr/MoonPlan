@@ -17,6 +17,7 @@ pub(all) enum Constraint {
   SumEquals(Array[Var], Int)
   CountAtMost(Array[Var], Int, Int)
   AllowedTuples(Array[Var], Array[Array[Int]])
+  Element(Var, Array[Int], Var)
 } derive(Eq, Debug)
 
 ///|
@@ -31,9 +32,11 @@ pub(all) enum ModelError {
   ForeignVariable(String)
   EmptyConstraint
   EmptyTupleTable
+  EmptyElementTable
   InvalidTupleArity(Int, Int, Int)
   TupleValueOutsideDomain(Int, String, Int)
   DuplicateTuple(Int, Int)
+  ElementIndexOutsideTable(String, Int, Int)
   InvalidConstraintLimit(Int)
   InvalidSolutionLimit(Int)
   InvalidTraceLimit(Int)
@@ -53,12 +56,15 @@ pub fn ModelError::message(self : ModelError) -> String {
     ForeignVariable(name) => "constraint refers to unknown variable: \{name}"
     EmptyConstraint => "constraint must contain at least one variable"
     EmptyTupleTable => "allowed tuple table must contain at least one row"
+    EmptyElementTable => "element value table must contain at least one value"
     InvalidTupleArity(index, expected, actual) =>
       "tuple \{index} must contain \{expected} values, got \{actual}"
     TupleValueOutsideDomain(index, name, value) =>
       "tuple \{index} uses value \{value} outside the domain of \{name}"
     DuplicateTuple(first, duplicate) =>
       "tuple \{duplicate} duplicates tuple \{first}"
+    ElementIndexOutsideTable(name, index, length) =>
+      "element index variable \{name} contains \{index}, outside table length \{length}"
     InvalidConstraintLimit(limit) =>
       "constraint limit must not be negative, got \{limit}"
     InvalidSolutionLimit(limit) =>
@@ -163,6 +169,7 @@ fn constraint_variables(constraint : Constraint) -> Array[Var] {
     | SumEquals(variables, _)
     | CountAtMost(variables, _, _)
     | AllowedTuples(variables, _) => variables
+    Element(index, _, target) => [index, target]
   }
 }
 
@@ -180,6 +187,7 @@ fn stabilize_constraint(constraint : Constraint) -> Constraint {
       }
       AllowedTuples(variables.copy(), stable_tuples)
     }
+    Element(index, values, target) => Element(index, values.copy(), target)
     _ => constraint
   }
 }
@@ -245,6 +253,18 @@ fn Problem::add_constraint_spec(
           if tuples[previous] == tuple {
             return Err(DuplicateTuple(previous, tuple_index))
           }
+        }
+      }
+    }
+    Element(index, values, _) => {
+      if values.length() == 0 {
+        return Err(EmptyElementTable)
+      }
+      for candidate in self.variables[index.index].domain {
+        if candidate < 0 || candidate >= values.length() {
+          return Err(
+            ElementIndexOutsideTable(index.name, candidate, values.length()),
+          )
         }
       }
     }
@@ -450,6 +470,31 @@ fn constraint_possible(
       }
       false
     }
+    Element(index, values, target) =>
+      match (assigned(assignment, index), assigned(assignment, target)) {
+        (Some(position), Some(value)) => values[position] == value
+        (Some(position), None) =>
+          domain_has(problem.variables[target.index].domain, values[position])
+        (None, Some(value)) => {
+          for position in problem.variables[index.index].domain {
+            if values[position] == value {
+              return true
+            }
+          }
+          false
+        }
+        (None, None) => {
+          for position in problem.variables[index.index].domain {
+            if domain_has(
+                problem.variables[target.index].domain,
+                values[position],
+              ) {
+              return true
+            }
+          }
+          false
+        }
+      }
   }
 }
 

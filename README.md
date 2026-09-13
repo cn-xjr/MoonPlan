@@ -38,6 +38,7 @@ repair suggestion: raise the per-worker workload limit from 1 to 2
 - `Equal`、`NotEqual`、`Different`、`OffsetDifferent`
 - `LessThan`、`AllDifferent`、`SumEquals`、`CountAtMost`
 - `AllowedTuples` 表约束，可表达轮班模板和任意兼容组合
+- `Element` 索引查表约束，可把方案编号映射为成本或资源属性
 - MRV（最少剩余值）变量选择和确定性回溯搜索
 - 多解枚举，以及搜索节点、回溯次数等诊断数据
 - 有界确定性搜索轨迹，可导出 JSON 供搜索树可视化
