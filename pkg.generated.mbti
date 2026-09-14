@@ -69,6 +69,8 @@ pub(all) enum Constraint {
   CountAtMost(Array[Var], Int, Int)
   AllowedTuples(Array[Var], Array[Array[Int]])
   Element(Var, Array[Int], Var)
+  LinearEquals(Array[Var], Array[Int], Int)
+  LinearAtMost(Array[Var], Array[Int], Int)
 } derive(Eq, @debug.Debug)
 
 type ConstraintSpec
@@ -93,6 +95,7 @@ pub(all) enum ModelError {
   TupleValueOutsideDomain(Int, String, Int)
   DuplicateTuple(Int, Int)
   ElementIndexOutsideTable(String, Int, Int)
+  InvalidCoefficientArity(Int, Int)
   InvalidConstraintLimit(Int)
   InvalidSolutionLimit(Int)
   InvalidTraceLimit(Int)

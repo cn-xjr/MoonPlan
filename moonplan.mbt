@@ -18,6 +18,8 @@ pub(all) enum Constraint {
   CountAtMost(Array[Var], Int, Int)
   AllowedTuples(Array[Var], Array[Array[Int]])
   Element(Var, Array[Int], Var)
+  LinearEquals(Array[Var], Array[Int], Int)
+  LinearAtMost(Array[Var], Array[Int], Int)
 } derive(Eq, Debug)
 
 ///|
@@ -37,6 +39,7 @@ pub(all) enum ModelError {
   TupleValueOutsideDomain(Int, String, Int)
   DuplicateTuple(Int, Int)
   ElementIndexOutsideTable(String, Int, Int)
+  InvalidCoefficientArity(Int, Int)
   InvalidConstraintLimit(Int)
   InvalidSolutionLimit(Int)
   InvalidTraceLimit(Int)
@@ -65,6 +68,8 @@ pub fn ModelError::message(self : ModelError) -> String {
       "tuple \{duplicate} duplicates tuple \{first}"
     ElementIndexOutsideTable(name, index, length) =>
       "element index variable \{name} contains \{index}, outside table length \{length}"
+    InvalidCoefficientArity(expected, actual) =>
+      "linear constraint requires \{expected} coefficients, got \{actual}"
     InvalidConstraintLimit(limit) =>
       "constraint limit must not be negative, got \{limit}"
     InvalidSolutionLimit(limit) =>
@@ -168,7 +173,9 @@ fn constraint_variables(constraint : Constraint) -> Array[Var] {
     AllDifferent(variables)
     | SumEquals(variables, _)
     | CountAtMost(variables, _, _)
-    | AllowedTuples(variables, _) => variables
+    | AllowedTuples(variables, _)
+    | LinearEquals(variables, _, _)
+    | LinearAtMost(variables, _, _) => variables
     Element(index, _, target) => [index, target]
   }
 }
@@ -188,6 +195,10 @@ fn stabilize_constraint(constraint : Constraint) -> Constraint {
       AllowedTuples(variables.copy(), stable_tuples)
     }
     Element(index, values, target) => Element(index, values.copy(), target)
+    LinearEquals(variables, coefficients, target) =>
+      LinearEquals(variables.copy(), coefficients.copy(), target)
+    LinearAtMost(variables, coefficients, limit) =>
+      LinearAtMost(variables.copy(), coefficients.copy(), limit)
     _ => constraint
   }
 }
@@ -268,6 +279,16 @@ fn Problem::add_constraint_spec(
         }
       }
     }
+    LinearEquals(linear_variables, coefficients, _)
+    | LinearAtMost(linear_variables, coefficients, _) =>
+      if coefficients.length() != linear_variables.length() {
+        return Err(
+          InvalidCoefficientArity(
+            linear_variables.length(),
+            coefficients.length(),
+          ),
+        )
+      }
     _ => ()
   }
   self.constraints.push({ name, constraint: stable_constraint, })
@@ -367,6 +388,47 @@ fn domain_bounds(domain : Array[Int]) -> (Int, Int) {
     }
     if value > high {
       high = value
+    }
+  }
+  (low, high)
+}
+
+///|
+fn scaled_bounds(domain : Array[Int], coefficient : Int) -> (Int, Int) {
+  let (low, high) = domain_bounds(domain)
+  if coefficient >= 0 {
+    (low * coefficient, high * coefficient)
+  } else {
+    (high * coefficient, low * coefficient)
+  }
+}
+
+///|
+fn linear_bounds(
+  problem : Problem,
+  assignment : Array[Int?],
+  variables : Array[Var],
+  coefficients : Array[Int],
+) -> (Int, Int) {
+  let mut low = 0
+  let mut high = 0
+  for index = 0; index < variables.length(); index = index + 1 {
+    let variable = variables[index]
+    let coefficient = coefficients[index]
+    match assigned(assignment, variable) {
+      Some(value) => {
+        let term = value * coefficient
+        low = low + term
+        high = high + term
+      }
+      None => {
+        let (term_low, term_high) = scaled_bounds(
+          problem.variables[variable.index].domain,
+          coefficient,
+        )
+        low = low + term_low
+        high = high + term_high
+      }
     }
   }
   (low, high)
@@ -495,6 +557,16 @@ fn constraint_possible(
           false
         }
       }
+    LinearEquals(variables, coefficients, target) => {
+      let (low, high) = linear_bounds(
+        problem, assignment, variables, coefficients,
+      )
+      target >= low && target <= high
+    }
+    LinearAtMost(variables, coefficients, limit) => {
+      let (low, _) = linear_bounds(problem, assignment, variables, coefficients)
+      low <= limit
+    }
   }
 }
 
