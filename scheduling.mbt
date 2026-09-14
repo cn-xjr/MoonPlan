@@ -78,6 +78,7 @@ pub(all) enum RosterError {
   UnknownPenaltyShift(Int)
   DuplicateAssignmentPenalty(Int, Int)
   InvalidAssignmentPenalty(Int, Int, Int)
+  InvalidConsecutiveSlotPenalty(Int)
   InvalidModel(ModelError)
   Unsatisfiable(SolveStats)
 } derive(Eq, Debug)
@@ -105,6 +106,8 @@ pub fn RosterError::message(self : RosterError) -> String {
       "duplicate assignment penalty for worker \{worker_id} and shift \{shift_id}"
     InvalidAssignmentPenalty(worker_id, shift_id, penalty) =>
       "assignment penalty for worker \{worker_id} and shift \{shift_id} must not be negative, got \{penalty}"
+    InvalidConsecutiveSlotPenalty(penalty) =>
+      "consecutive slot penalty must not be negative, got \{penalty}"
     InvalidModel(error) => "invalid constraint model: \{error.message()}"
     Unsatisfiable(stats) =>
       "no feasible roster after \{stats.nodes} assignments and \{stats.backtracks} backtracks"

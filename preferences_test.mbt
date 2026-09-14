@@ -133,3 +133,78 @@ test "validates assignment penalty references and values" {
     is Err(@moonplan.InvalidCandidateLimit(0)),
   )
 }
+
+///|
+test "trades assignment preference against consecutive work" {
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+    { id: 2, name: "Midday", slot: 10, required_skill: "support", },
+  ]
+  let objective : @moonplan.RosterObjective = {
+    assignment_penalties: [
+      { worker_id: 2, shift_id: 1, penalty: 5, },
+      { worker_id: 2, shift_id: 2, penalty: 5, },
+    ],
+    consecutive_slot_penalty: 20,
+  }
+  let result = @moonplan.build_preferred_roster_with_objective(
+    preference_workers(),
+    shifts,
+    @moonplan.RosterPolicy::default(),
+    objective,
+    4,
+  ).unwrap()
+  assert_eq(result.total_penalty, 5)
+  assert_eq(result.roster.worker_for_shift(1).unwrap().name, "Ada")
+  assert_eq(result.roster.worker_for_shift(2).unwrap().name, "Bo")
+}
+
+///|
+test "charges every adjacent pair in a work sequence" {
+  let workers : Array[@moonplan.Worker] = [
+    { id: 1, name: "Ada", skills: ["support"], available_slots: [9, 10, 11], },
+  ]
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+    { id: 2, name: "Midday", slot: 10, required_skill: "support", },
+    { id: 3, name: "Evening", slot: 11, required_skill: "support", },
+  ]
+  let result = @moonplan.build_preferred_roster_with_objective(
+    workers,
+    shifts,
+    @moonplan.RosterPolicy::default(),
+    { assignment_penalties: [], consecutive_slot_penalty: 7, },
+    1,
+  ).unwrap()
+  assert_eq(result.total_penalty, 14)
+}
+
+///|
+test "does not charge separated shifts as consecutive" {
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+    { id: 2, name: "Evening", slot: 11, required_skill: "support", },
+  ]
+  let result = @moonplan.build_preferred_roster_with_objective(
+    preference_workers(),
+    shifts,
+    @moonplan.RosterPolicy::default(),
+    { assignment_penalties: [], consecutive_slot_penalty: 7, },
+    1,
+  ).unwrap()
+  assert_eq(result.total_penalty, 0)
+}
+
+///|
+test "rejects a negative consecutive slot penalty" {
+  assert_true(
+    @moonplan.build_preferred_roster_with_objective(
+      preference_workers(),
+      [],
+      @moonplan.RosterPolicy::default(),
+      { assignment_penalties: [], consecutive_slot_penalty: -1, },
+      1,
+    )
+    is Err(@moonplan.InvalidConsecutiveSlotPenalty(-1)),
+  )
+}

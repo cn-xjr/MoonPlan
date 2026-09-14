@@ -29,6 +29,7 @@ MoonPlan 是一个使用纯 MoonBit 实现的**可解释有限域约束求解与
 - `build_capped_roster` 每人班次数量硬上限
 - `RosterPolicy` 与 `build_roster_with_policy` 最小休息间隔组合规则
 - `AssignmentPenalty` 与 `build_preferred_roster` 软偏好优化
+- `RosterObjective` 与相邻班次疲劳成本优化
 - `decode_roster_request` 与 `encode_preferred_roster` JSON 集成边界
 - `analyze_roster` 二分图匹配预检与容量冲突解释
 
@@ -47,7 +48,7 @@ moon run cmd/main
 ## 路线图
 
 1. **求解器内核**：可撤销域、约束传播队列和 degree/LCV 启发式。
-2. **真实排班层**：班次、人员、技能、工作量上限、最小休息间隔、分配偏好与连续工作成本。
+2. **真实排班层**：班次、人员、技能、工作量上限、最小休息间隔、分配偏好与相邻班次成本。
 3. **优化与解释**：将现有均衡评分、冲突集和基础修复建议扩展为分支定界、加权目标与复杂规则修复。
 4. **可视化工作台**：在现有 JSON 边界和搜索事件流上接入 Wasm 求解、甘特图/日历视图与交互解释。
 5. **工程成熟度**：跨后端一致性、基准语料、属性测试、Mooncakes 发布与下游示例。

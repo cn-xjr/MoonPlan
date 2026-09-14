@@ -10,6 +10,22 @@ pub(all) struct AssignmentPenalty {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+/// Soft costs used to rank feasible rosters.
+///
+/// `consecutive_slot_penalty` is charged for each pair of shifts in adjacent
+/// slots assigned to the same worker. A value of zero disables this cost.
+pub(all) struct RosterObjective {
+  assignment_penalties : Array[AssignmentPenalty]
+  consecutive_slot_penalty : Int
+} derive(Eq, Debug, ToJson, FromJson)
+
+///|
+/// Build an objective with no soft costs.
+pub fn RosterObjective::default() -> RosterObjective {
+  { assignment_penalties: [], consecutive_slot_penalty: 0, }
+}
+
+///|
 /// The lowest-penalty roster found within a bounded candidate search.
 pub(all) struct PreferredRoster {
   roster : Roster
@@ -82,6 +98,33 @@ fn roster_penalty(roster : Roster, penalties : Array[AssignmentPenalty]) -> Int 
 }
 
 ///|
+fn consecutive_slot_penalty(roster : Roster, penalty : Int) -> Int {
+  if penalty == 0 {
+    return 0
+  }
+  let mut pairs = 0
+  for left = 0; left < roster.entries.length(); left = left + 1 {
+    for right = left + 1; right < roster.entries.length(); right = right + 1 {
+      if roster.entries[left].worker.id == roster.entries[right].worker.id &&
+        slot_distance(
+          roster.entries[left].shift.slot,
+          roster.entries[right].shift.slot,
+        ) ==
+        1 {
+        pairs = pairs + 1
+      }
+    }
+  }
+  pairs * penalty
+}
+
+///|
+fn objective_penalty(roster : Roster, objective : RosterObjective) -> Int {
+  roster_penalty(roster, objective.assignment_penalties) +
+  consecutive_slot_penalty(roster, objective.consecutive_slot_penalty)
+}
+
+///|
 fn better_preferred_roster(
   penalty : Int,
   balance : BalanceScore,
@@ -105,8 +148,36 @@ pub fn build_preferred_roster(
   penalties : Array[AssignmentPenalty],
   candidate_limit : Int,
 ) -> Result[PreferredRoster, RosterError] {
+  build_preferred_roster_with_objective(
+    workers,
+    shifts,
+    policy,
+    { assignment_penalties: penalties, consecutive_slot_penalty: 0, },
+    candidate_limit,
+  )
+}
+
+///|
+/// Optimize assignment preferences and consecutive-work cost together.
+///
+/// Total soft cost is minimized first. Workload balance breaks equal-cost
+/// ties, and deterministic solution order breaks any remaining tie. Existing
+/// callers can keep using `build_preferred_roster`, which disables the
+/// consecutive-slot cost.
+pub fn build_preferred_roster_with_objective(
+  workers : Array[Worker],
+  shifts : Array[Shift],
+  policy : RosterPolicy,
+  objective : RosterObjective,
+  candidate_limit : Int,
+) -> Result[PreferredRoster, RosterError] {
   if candidate_limit <= 0 {
     return Err(InvalidCandidateLimit(candidate_limit))
+  }
+  if objective.consecutive_slot_penalty < 0 {
+    return Err(
+      InvalidConsecutiveSlotPenalty(objective.consecutive_slot_penalty),
+    )
   }
   match validate_roster_policy(policy) {
     Err(error) => return Err(error)
@@ -115,7 +186,12 @@ pub fn build_preferred_roster(
   match build_roster_model(workers, shifts) {
     Err(error) => Err(error)
     Ok(model) => {
-      match validate_assignment_penalties(workers, shifts, penalties) {
+      match
+        validate_assignment_penalties(
+          workers,
+          shifts,
+          objective.assignment_penalties,
+        ) {
         Err(error) => return Err(error)
         Ok(_) => ()
       }
@@ -136,7 +212,7 @@ pub fn build_preferred_roster(
             solutions[0],
             stats,
           )
-          let mut best_penalty = roster_penalty(best_roster, penalties)
+          let mut best_penalty = objective_penalty(best_roster, objective)
           let mut best_balance = balance_score(workers, best_roster)
           for index = 1; index < solutions.length(); index = index + 1 {
             let roster = roster_from_solution(
@@ -146,7 +222,7 @@ pub fn build_preferred_roster(
               solutions[index],
               stats,
             )
-            let penalty = roster_penalty(roster, penalties)
+            let penalty = objective_penalty(roster, objective)
             let balance = balance_score(workers, roster)
             if better_preferred_roster(
                 penalty, balance, best_penalty, best_balance,
