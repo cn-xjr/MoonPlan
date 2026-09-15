@@ -9,6 +9,19 @@ pub(all) struct RosterRequest {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+/// A portable optimization request with a composable soft objective.
+///
+/// This type extends the JSON integration without changing the established
+/// `RosterRequest` schema used by existing clients.
+pub(all) struct RosterOptimizationRequest {
+  workers : Array[Worker]
+  shifts : Array[Shift]
+  policy : RosterPolicy
+  objective : RosterObjective
+  candidate_limit : Int
+} derive(Eq, Debug, ToJson, FromJson)
+
+///|
 /// Errors produced while decoding a roster request.
 pub(all) enum RosterJsonError {
   InvalidJson(String)
@@ -39,6 +52,20 @@ pub fn decode_roster_request(
 }
 
 ///|
+/// Decode an objective-aware roster optimization request from JSON text.
+pub fn decode_roster_optimization_request(
+  text : String,
+) -> Result[RosterOptimizationRequest, RosterJsonError] {
+  let json = @json.parse(text) catch {
+    error => return Err(InvalidJson(error.to_string()))
+  }
+  let request : RosterOptimizationRequest = @json.from_json(json) catch {
+    error => return Err(InvalidRosterSchema(error.to_string()))
+  }
+  Ok(request)
+}
+
+///|
 /// Solve a decoded request using its hard policy and soft penalties.
 pub fn RosterRequest::solve(
   self : RosterRequest,
@@ -48,6 +75,20 @@ pub fn RosterRequest::solve(
     self.shifts,
     self.policy,
     self.penalties,
+    self.candidate_limit,
+  )
+}
+
+///|
+/// Solve an objective-aware request using all hard and soft rules.
+pub fn RosterOptimizationRequest::solve(
+  self : RosterOptimizationRequest,
+) -> Result[PreferredRoster, RosterError] {
+  build_preferred_roster_with_objective(
+    self.workers,
+    self.shifts,
+    self.policy,
+    self.objective,
     self.candidate_limit,
   )
 }

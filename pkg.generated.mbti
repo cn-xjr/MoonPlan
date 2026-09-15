@@ -21,6 +21,8 @@ pub fn build_roster(Array[Worker], Array[Shift]) -> Result[Roster, RosterError]
 
 pub fn build_roster_with_policy(Array[Worker], Array[Shift], RosterPolicy) -> Result[Roster, RosterError]
 
+pub fn decode_roster_optimization_request(String) -> Result[RosterOptimizationRequest, RosterJsonError]
+
 pub fn decode_roster_request(String) -> Result[RosterRequest, RosterJsonError]
 
 pub fn encode_preferred_roster(PreferredRoster, Int) -> String
@@ -191,6 +193,15 @@ pub(all) struct RosterObjective {
   consecutive_slot_penalty : Int
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 pub fn RosterObjective::default() -> Self
+
+pub(all) struct RosterOptimizationRequest {
+  workers : Array[Worker]
+  shifts : Array[Shift]
+  policy : RosterPolicy
+  objective : RosterObjective
+  candidate_limit : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn RosterOptimizationRequest::solve(Self) -> Result[PreferredRoster, RosterError]
 
 pub(all) struct RosterPolicy {
   max_shifts_per_worker : Int?
