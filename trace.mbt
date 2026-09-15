@@ -71,7 +71,7 @@ pub fn Problem::solve_with_trace(
     limit: event_limit,
     truncated: false,
   }
-  search(self, assignment, counters, solutions, 1, Some(recorder), 0)
+  search(self, assignment, counters, solutions, 1, Mrv, Some(recorder), 0)
   let stats : SolveStats = {
     nodes: counters.nodes,
     backtracks: counters.backtracks,

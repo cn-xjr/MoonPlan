@@ -349,6 +349,17 @@ pub(all) struct SolveStats {
 } derive(Eq, Debug, ToJson)
 
 ///|
+/// Deterministic variable and value ordering used by the search.
+///
+/// `Mrv` preserves declaration order when minimum remaining domains tie.
+/// `DegreeLcv` prefers the variable involved in more active constraints, then
+/// tries values that leave the most choices for the remaining variables.
+pub(all) enum SearchStrategy {
+  Mrv
+  DegreeLcv
+} derive(Eq, Debug)
+
+///|
 /// Solver result with an explicit unsatisfiable branch.
 pub(all) enum SolveOutcome {
   Satisfied(Solution, SolveStats)
@@ -601,25 +612,120 @@ fn viable_values(
 }
 
 ///|
+fn variable_is_in(variables : Array[Var], expected : Var) -> Bool {
+  for variable in variables {
+    if variable == expected {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn active_degree(
+  problem : Problem,
+  assignment : Array[Int?],
+  variable : Var,
+) -> Int {
+  let mut degree = 0
+  for spec in problem.constraints {
+    let variables = constraint_variables(spec.constraint)
+    if variable_is_in(variables, variable) {
+      let mut has_unassigned_neighbor = false
+      for neighbor in variables {
+        if neighbor != variable && assignment[neighbor.index] is None {
+          has_unassigned_neighbor = true
+          break
+        }
+      }
+      if has_unassigned_neighbor {
+        degree = degree + 1
+      }
+    }
+  }
+  degree
+}
+
+///|
+fn lcv_score(
+  problem : Problem,
+  assignment : Array[Int?],
+  selected_index : Int,
+  value : Int,
+) -> Int {
+  assignment[selected_index] = Some(value)
+  let mut score = 0
+  for index = 0; index < assignment.length(); index = index + 1 {
+    if index != selected_index && assignment[index] is None {
+      score = score + viable_values(problem, assignment, index).length()
+    }
+  }
+  assignment[selected_index] = None
+  score
+}
+
+///|
+fn order_values_by_lcv(
+  problem : Problem,
+  assignment : Array[Int?],
+  selected_index : Int,
+  values : Array[Int],
+) -> Array[Int] {
+  let ordered = values.copy()
+  let scores : Array[Int] = []
+  for value in ordered {
+    scores.push(lcv_score(problem, assignment, selected_index, value))
+  }
+  for index = 1; index < ordered.length(); index = index + 1 {
+    let value = ordered[index]
+    let score = scores[index]
+    let mut position = index
+    while position > 0 && score > scores[position - 1] {
+      ordered[position] = ordered[position - 1]
+      scores[position] = scores[position - 1]
+      position = position - 1
+    }
+    ordered[position] = value
+    scores[position] = score
+  }
+  ordered
+}
+
+///|
 fn choose_variable(
   problem : Problem,
   assignment : Array[Int?],
+  strategy : SearchStrategy,
 ) -> (Int, Array[Int])? {
   let mut best_index = -1
   let mut best_values : Array[Int] = []
+  let mut best_degree = -1
   for index = 0; index < assignment.length(); index = index + 1 {
     if assignment[index] is None {
       let values = viable_values(problem, assignment, index)
-      if best_index == -1 || values.length() < best_values.length() {
+      let degree = match strategy {
+        Mrv => 0
+        DegreeLcv =>
+          active_degree(problem, assignment, problem.variables[index].variable)
+      }
+      if best_index == -1 ||
+        values.length() < best_values.length() ||
+        (values.length() == best_values.length() && degree > best_degree) {
         best_index = index
         best_values = values
+        best_degree = degree
       }
     }
   }
   if best_index == -1 {
     None
   } else {
-    Some((best_index, best_values))
+    let ordered_values = match strategy {
+      Mrv => best_values
+      DegreeLcv =>
+        order_values_by_lcv(problem, assignment, best_index, best_values)
+    }
+    Some((best_index, ordered_values))
   }
 }
 
@@ -643,13 +749,14 @@ fn search(
   counters : SearchCounters,
   solutions : Array[Solution],
   limit : Int,
+  strategy : SearchStrategy,
   recorder : TraceRecorder?,
   depth : Int,
 ) -> Unit {
   if solutions.length() >= limit {
     return
   }
-  match choose_variable(problem, assignment) {
+  match choose_variable(problem, assignment, strategy) {
     None =>
       if all_constraints_possible(problem, assignment) {
         solutions.push(make_solution(problem, assignment))
@@ -680,6 +787,7 @@ fn search(
           counters,
           solutions,
           limit,
+          strategy,
           recorder,
           depth + 1,
         )
@@ -701,13 +809,23 @@ pub fn Problem::solve_all(
   self : Problem,
   limit : Int,
 ) -> Result[(Array[Solution], SolveStats), ModelError] {
+  self.solve_all_with_strategy(limit, Mrv)
+}
+
+///|
+/// Enumerate solutions with an explicit deterministic search strategy.
+pub fn Problem::solve_all_with_strategy(
+  self : Problem,
+  limit : Int,
+  strategy : SearchStrategy,
+) -> Result[(Array[Solution], SolveStats), ModelError] {
   if limit <= 0 {
     return Err(InvalidSolutionLimit(limit))
   }
   let assignment : Array[Int?] = Array::make(self.variables.length(), None)
   let counters : SearchCounters = { nodes: 0, backtracks: 0, }
   let solutions : Array[Solution] = []
-  search(self, assignment, counters, solutions, limit, None, 0)
+  search(self, assignment, counters, solutions, limit, strategy, None, 0)
   Ok(
     (
       solutions,
@@ -723,7 +841,16 @@ pub fn Problem::solve_all(
 ///|
 /// Find the first solution using MRV-guided deterministic backtracking.
 pub fn Problem::solve(self : Problem) -> SolveOutcome {
-  let (solutions, stats) = self.solve_all(1).unwrap()
+  self.solve_with_strategy(Mrv)
+}
+
+///|
+/// Find the first solution with an explicit deterministic search strategy.
+pub fn Problem::solve_with_strategy(
+  self : Problem,
+  strategy : SearchStrategy,
+) -> SolveOutcome {
+  let (solutions, stats) = self.solve_all_with_strategy(1, strategy).unwrap()
   if solutions.length() == 0 {
     Unsatisfied(stats)
   } else {
