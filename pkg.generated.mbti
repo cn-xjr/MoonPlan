@@ -29,6 +29,8 @@ pub fn int_domain(Int, Int) -> Array[Int]
 
 pub fn suggest_capped_roster_repairs(Array[Worker], Array[Shift], Int) -> Result[RosterRepairPlan, RosterError]
 
+pub fn suggest_roster_policy_repairs(Array[Worker], Array[Shift], RosterPolicy) -> Result[RosterRepairPlan, RosterError]
+
 // Errors
 
 // Types and methods
@@ -202,6 +204,7 @@ pub(all) enum RosterRepair {
   AddQualifiedWorker(Int, String, String)
   AddSlotCapacity(Int, Int)
   RaiseWorkloadLimit(Int, Int)
+  ReduceMinimumSlotGap(Int, Int)
 } derive(Eq, @debug.Debug)
 pub fn RosterRepair::message(Self) -> String
 

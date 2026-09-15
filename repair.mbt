@@ -6,6 +6,7 @@ pub(all) enum RosterRepair {
   AddQualifiedWorker(Int, String, String)
   AddSlotCapacity(Int, Int)
   RaiseWorkloadLimit(Int, Int)
+  ReduceMinimumSlotGap(Int, Int)
 } derive(Eq, Debug)
 
 ///|
@@ -24,6 +25,8 @@ pub fn RosterRepair::message(self : RosterRepair) -> String {
       "make \{missing} additional eligible worker(s) available at slot \{slot}"
     RaiseWorkloadLimit(current, suggested) =>
       "raise the per-worker workload limit from \{current} to \{suggested}"
+    ReduceMinimumSlotGap(current, suggested) =>
+      "reduce the minimum slot gap from \{current} to \{suggested}"
   }
 }
 
@@ -109,15 +112,15 @@ fn repair_for_issue(
 }
 
 ///|
-fn capped_model(
+fn policy_model(
   workers : Array[Worker],
   shifts : Array[Shift],
-  limit : Int,
+  policy : RosterPolicy,
 ) -> Result[RosterModel, RosterError] {
   match build_roster_model(workers, shifts) {
     Err(error) => Err(error)
     Ok(model) =>
-      match add_workload_constraints(model, workers, limit) {
+      match apply_roster_policy(model, workers, shifts, policy) {
         Err(error) => Err(error)
         Ok(_) => Ok(model)
       }
@@ -128,34 +131,69 @@ fn capped_model(
 fn minimum_feasible_workload_limit(
   workers : Array[Worker],
   shifts : Array[Shift],
-  current : Int,
+  policy : RosterPolicy,
 ) -> Int? {
-  for limit = current + 1; limit <= shifts.length(); limit = limit + 1 {
-    match capped_model(workers, shifts, limit) {
-      Err(_) => ()
-      Ok(model) =>
-        match model.problem.solve() {
-          Satisfied(_, _) => return Some(limit)
-          Unsatisfied(_) => ()
+  match policy.max_shifts_per_worker {
+    None => return None
+    Some(current) =>
+      for limit = current + 1; limit <= shifts.length(); limit = limit + 1 {
+        match
+          policy_model(workers, shifts, {
+            max_shifts_per_worker: Some(limit),
+            minimum_slot_gap: policy.minimum_slot_gap,
+          }) {
+          Err(_) => ()
+          Ok(model) =>
+            match model.problem.solve() {
+              Satisfied(_, _) => return Some(limit)
+              Unsatisfied(_) => ()
+            }
         }
-    }
+      }
   }
   None
 }
 
 ///|
-/// Diagnose a roster with a uniform workload cap and propose concrete repairs.
-///
-/// Definite input and capacity issues are reported without search. If only the
-/// cap makes the model impossible, the returned conflict contains the named
-/// solver rules and the proposed limit is the smallest feasible uniform value.
-pub fn suggest_capped_roster_repairs(
+fn maximum_feasible_rest_gap_below(
   workers : Array[Worker],
   shifts : Array[Shift],
-  max_shifts_per_worker : Int,
+  policy : RosterPolicy,
+) -> Int? {
+  let mut gap = policy.minimum_slot_gap - 1
+  while gap >= 0 {
+    match
+      policy_model(workers, shifts, {
+        max_shifts_per_worker: policy.max_shifts_per_worker,
+        minimum_slot_gap: gap,
+      }) {
+      Err(_) => ()
+      Ok(model) =>
+        match model.problem.solve() {
+          Satisfied(_, _) => return Some(gap)
+          Unsatisfied(_) => ()
+        }
+    }
+    gap = gap - 1
+  }
+  None
+}
+
+///|
+/// Diagnose a roster policy and propose independently feasible relaxations.
+///
+/// Definite input and capacity issues are reported without search. If only the
+/// policy makes the model impossible, the returned conflict retains the named
+/// rules. Workload suggestions choose the smallest feasible limit; rest
+/// suggestions choose the largest smaller gap that restores feasibility.
+pub fn suggest_roster_policy_repairs(
+  workers : Array[Worker],
+  shifts : Array[Shift],
+  policy : RosterPolicy,
 ) -> Result[RosterRepairPlan, RosterError] {
-  if max_shifts_per_worker < 0 {
-    return Err(InvalidWorkloadLimit(max_shifts_per_worker))
+  match validate_roster_policy(policy) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
   }
   let analysis = analyze_roster(workers, shifts)
   if analysis.issues.length() > 0 {
@@ -168,23 +206,46 @@ pub fn suggest_capped_roster_repairs(
     }
     return Ok({ issues: analysis.issues, conflict: None, repairs, })
   }
-  match capped_model(workers, shifts, max_shifts_per_worker) {
+  match policy_model(workers, shifts, policy) {
     Err(error) => Err(error)
     Ok(model) =>
       match model.problem.explain() {
         Consistent(_) => Ok({ issues: [], conflict: None, repairs: [], })
         Inconsistent(conflict) => {
           let repairs : Array[RosterRepair] = []
-          match
-            minimum_feasible_workload_limit(
-              workers, shifts, max_shifts_per_worker,
-            ) {
-            Some(limit) =>
-              repairs.push(RaiseWorkloadLimit(max_shifts_per_worker, limit))
+          match policy.max_shifts_per_worker {
+            Some(current) =>
+              match minimum_feasible_workload_limit(workers, shifts, policy) {
+                Some(limit) => repairs.push(RaiseWorkloadLimit(current, limit))
+                None => ()
+              }
             None => ()
+          }
+          if policy.minimum_slot_gap > 0 {
+            match maximum_feasible_rest_gap_below(workers, shifts, policy) {
+              Some(gap) =>
+                repairs.push(ReduceMinimumSlotGap(policy.minimum_slot_gap, gap))
+              None => ()
+            }
           }
           Ok({ issues: [], conflict: Some(conflict), repairs, })
         }
       }
   }
+}
+
+///|
+/// Diagnose a roster with a uniform workload cap and propose concrete repairs.
+///
+/// This compatibility helper applies no minimum rest gap. Use
+/// `suggest_roster_policy_repairs` when workload and rest rules are combined.
+pub fn suggest_capped_roster_repairs(
+  workers : Array[Worker],
+  shifts : Array[Shift],
+  max_shifts_per_worker : Int,
+) -> Result[RosterRepairPlan, RosterError] {
+  suggest_roster_policy_repairs(workers, shifts, {
+    max_shifts_per_worker: Some(max_shifts_per_worker),
+    minimum_slot_gap: 0,
+  })
 }

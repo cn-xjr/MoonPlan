@@ -23,6 +23,7 @@ MoonPlan 是一个使用纯 MoonBit 实现的**可解释有限域约束求解与
 - `solve_with_trace` 有界确定性搜索事件与 JSON 导出
 - 命名约束与不可满足模型的最小冲突集解释
 - `suggest_capped_roster_repairs` 排班修复建议与最小可行上限
+- `suggest_roster_policy_repairs` 组合策略诊断与最小休息间隔放宽建议
 - N 皇后、不可满足模型和人员排班测试
 - `Worker`、`Shift`、`Roster` 领域模型与可运行的人员排班示例
 - `build_balanced_roster` 有界候选优化与工作量均衡评分
@@ -43,7 +44,7 @@ moon run cmd/main
 
 示例会先生成满足技能和时段约束的排班，再演示当每人最多一班导致无解时，自动建议将统一工作量上限提高到二班。
 
-底层模型可以通过 `add_named_constraint` 保留业务规则名称。无解时调用 `Problem::explain`，即可获得包含原始序号、规则名称和类型化约束的不可再删减冲突集合；`suggest_capped_roster_repairs` 会继续把预检事实和冲突证据转换为增补合格人员、增加时段容量或提高工作量上限等具体建议。
+底层模型可以通过 `add_named_constraint` 保留业务规则名称。无解时调用 `Problem::explain`，即可获得包含原始序号、规则名称和类型化约束的不可再删减冲突集合；策略修复 API 会继续把预检事实和冲突证据转换为增补合格人员、增加时段容量、提高工作量上限或放宽休息间隔等具体建议。
 
 ## 路线图
 

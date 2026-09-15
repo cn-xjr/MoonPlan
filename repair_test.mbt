@@ -84,3 +84,63 @@ test "rejects a negative repair workload limit" {
     is Err(@moonplan.InvalidWorkloadLimit(-1)),
   )
 }
+
+///|
+test "suggests the smallest rest-gap relaxation" {
+  let workers : Array[@moonplan.Worker] = [
+    { id: 1, name: "Solo", skills: ["support"], available_slots: [9, 10], },
+  ]
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+    { id: 2, name: "Midday", slot: 10, required_skill: "support", },
+  ]
+  let plan = @moonplan.suggest_roster_policy_repairs(workers, shifts, {
+    max_shifts_per_worker: None,
+    minimum_slot_gap: 2,
+  }).unwrap()
+  assert_false(plan.is_feasible())
+  assert_eq(plan.repairs, [@moonplan.ReduceMinimumSlotGap(2, 1)])
+  match plan.conflict {
+    None => fail("the rest conflict must be retained")
+    Some(conflict) => {
+      assert_eq(conflict.items.length(), 1)
+      assert_eq(conflict.items[0].name, Some("rest-gap-2:shift-1-vs-2"))
+    }
+  }
+}
+
+///|
+test "keeps other policy rules while testing a repair" {
+  let policy : @moonplan.RosterPolicy = {
+    max_shifts_per_worker: Some(1),
+    minimum_slot_gap: 2,
+  }
+  let plan = @moonplan.suggest_roster_policy_repairs(
+    flexible_workers(),
+    daily_shifts(),
+    policy,
+  ).unwrap()
+  assert_eq(plan.repairs, [@moonplan.RaiseWorkloadLimit(1, 2)])
+}
+
+///|
+test "returns no policy repairs when combined rules are feasible" {
+  let plan = @moonplan.suggest_roster_policy_repairs(
+    flexible_workers(),
+    daily_shifts(),
+    { max_shifts_per_worker: Some(2), minimum_slot_gap: 2, },
+  ).unwrap()
+  assert_true(plan.is_feasible())
+  assert_eq(plan.repairs, [])
+}
+
+///|
+test "validates policy before searching for repairs" {
+  assert_true(
+    @moonplan.suggest_roster_policy_repairs([], [], {
+      max_shifts_per_worker: None,
+      minimum_slot_gap: -1,
+    })
+    is Err(@moonplan.InvalidRestGap(-1)),
+  )
+}
