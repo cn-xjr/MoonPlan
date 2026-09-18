@@ -42,6 +42,7 @@ repair suggestion: raise the per-worker workload limit from 1 to 2
 - `LinearEquals`、`LinearAtMost` 加权线性约束，可表达预算、工时和容量关系
 - MRV 默认搜索，以及可选的 degree 同分决策与 LCV 值排序
 - 多解枚举，以及搜索节点、回溯次数等诊断数据
+- 有节点上限的求解，可明确区分找到解、证明无解与预算耗尽
 - 有界确定性搜索轨迹，可导出 JSON 供搜索树可视化
 - 命名约束与不可满足模型的最小冲突集解释
 - 排班预检、冲突证据，以及工作量上限与休息间隔修复建议

@@ -53,6 +53,12 @@ pub(all) struct Binding {
   value : Int
 } derive(Eq, ToJson, @debug.Debug)
 
+pub(all) enum BudgetedSolveOutcome {
+  Found(Solution, SolveStats)
+  ProvedUnsatisfiable(SolveStats)
+  BudgetExhausted(SolveStats)
+} derive(Eq, ToJson, @debug.Debug)
+
 pub(all) struct ConflictItem {
   index : Int
   name : String?
@@ -105,6 +111,7 @@ pub(all) enum ModelError {
   InvalidConstraintLimit(Int)
   InvalidSolutionLimit(Int)
   InvalidTraceLimit(Int)
+  InvalidNodeLimit(Int)
 } derive(Eq, @debug.Debug)
 pub fn ModelError::message(Self) -> String
 
@@ -134,6 +141,7 @@ pub fn Problem::new() -> Self
 pub fn Problem::solve(Self) -> SolveOutcome
 pub fn Problem::solve_all(Self, Int) -> Result[(Array[Solution], SolveStats), ModelError]
 pub fn Problem::solve_all_with_strategy(Self, Int, SearchStrategy) -> Result[(Array[Solution], SolveStats), ModelError]
+pub fn Problem::solve_with_node_limit(Self, Int, SearchStrategy) -> Result[BudgetedSolveOutcome, ModelError]
 pub fn Problem::solve_with_strategy(Self, SearchStrategy) -> SolveOutcome
 pub fn Problem::solve_with_trace(Self, Int) -> Result[SolveTrace, ModelError]
 pub fn Problem::variable_count(Self) -> Int

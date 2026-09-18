@@ -20,6 +20,7 @@ MoonPlan 是一个使用纯 MoonBit 实现的**可解释有限域约束求解与
 - `LinearEquals`、`LinearAtMost` 加权线性约束，可表达预算、工时和容量关系
 - MRV 默认搜索，以及可选的 degree 同分决策与 LCV 值排序
 - 节点数、回溯数和解数量统计
+- `solve_with_node_limit` 有界求解与明确的未完成结果
 - `solve_with_trace` 有界确定性搜索事件与 JSON 导出
 - 命名约束与不可满足模型的最小冲突集解释
 - `suggest_capped_roster_repairs` 排班修复建议与最小可行上限

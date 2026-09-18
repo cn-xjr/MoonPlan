@@ -64,14 +64,18 @@ pub fn Problem::solve_with_trace(
     return Err(InvalidTraceLimit(event_limit))
   }
   let assignment : Array[Int?] = Array::make(self.variables.length(), None)
-  let counters : SearchCounters = { nodes: 0, backtracks: 0, }
+  let counters : SearchCounters = {
+    nodes: 0,
+    backtracks: 0,
+    budget_exhausted: false,
+  }
   let solutions : Array[Solution] = []
   let recorder : TraceRecorder = {
     events: [],
     limit: event_limit,
     truncated: false,
   }
-  search(self, assignment, counters, solutions, 1, Mrv, Some(recorder), 0)
+  search(self, assignment, counters, solutions, 1, Mrv, None, Some(recorder), 0)
   let stats : SolveStats = {
     nodes: counters.nodes,
     backtracks: counters.backtracks,

@@ -43,6 +43,7 @@ pub(all) enum ModelError {
   InvalidConstraintLimit(Int)
   InvalidSolutionLimit(Int)
   InvalidTraceLimit(Int)
+  InvalidNodeLimit(Int)
 } derive(Eq, Debug)
 
 ///|
@@ -76,6 +77,8 @@ pub fn ModelError::message(self : ModelError) -> String {
       "solution limit must be positive, got \{limit}"
     InvalidTraceLimit(limit) =>
       "trace event limit must be positive, got \{limit}"
+    InvalidNodeLimit(limit) =>
+      "search node limit must be positive, got \{limit}"
   }
 }
 
@@ -367,9 +370,20 @@ pub(all) enum SolveOutcome {
 } derive(Eq, Debug, ToJson)
 
 ///|
+/// A first-solution search with a hard cap on attempted assignments.
+/// `BudgetExhausted` means no solution was found, but the model is not proven
+/// unsatisfiable because unexplored branches remain.
+pub(all) enum BudgetedSolveOutcome {
+  Found(Solution, SolveStats)
+  ProvedUnsatisfiable(SolveStats)
+  BudgetExhausted(SolveStats)
+} derive(Eq, Debug, ToJson)
+
+///|
 priv struct SearchCounters {
   mut nodes : Int
   mut backtracks : Int
+  mut budget_exhausted : Bool
 }
 
 ///|
@@ -750,6 +764,7 @@ fn search(
   solutions : Array[Solution],
   limit : Int,
   strategy : SearchStrategy,
+  node_limit : Int?,
   recorder : TraceRecorder?,
   depth : Int,
 ) -> Unit {
@@ -773,8 +788,15 @@ fn search(
       }
       let before = solutions.length()
       for value in values {
-        if solutions.length() >= limit {
+        if solutions.length() >= limit || counters.budget_exhausted {
           break
+        }
+        match node_limit {
+          Some(max_nodes) if counters.nodes >= max_nodes => {
+            counters.budget_exhausted = true
+            break
+          }
+          _ => ()
         }
         let branch_before = solutions.length()
         let variable_name = problem.variables[index].variable.name
@@ -788,15 +810,16 @@ fn search(
           solutions,
           limit,
           strategy,
+          node_limit,
           recorder,
           depth + 1,
         )
         assignment[index] = None
-        if solutions.length() == branch_before {
+        if !counters.budget_exhausted && solutions.length() == branch_before {
           record_search_event(recorder, Backtrack(variable_name, value, depth))
         }
       }
-      if solutions.length() == before {
+      if !counters.budget_exhausted && solutions.length() == before {
         counters.backtracks = counters.backtracks + 1
       }
     }
@@ -823,9 +846,13 @@ pub fn Problem::solve_all_with_strategy(
     return Err(InvalidSolutionLimit(limit))
   }
   let assignment : Array[Int?] = Array::make(self.variables.length(), None)
-  let counters : SearchCounters = { nodes: 0, backtracks: 0, }
+  let counters : SearchCounters = {
+    nodes: 0,
+    backtracks: 0,
+    budget_exhausted: false,
+  }
   let solutions : Array[Solution] = []
-  search(self, assignment, counters, solutions, limit, strategy, None, 0)
+  search(self, assignment, counters, solutions, limit, strategy, None, None, 0)
   Ok(
     (
       solutions,
@@ -855,6 +882,52 @@ pub fn Problem::solve_with_strategy(
     Unsatisfied(stats)
   } else {
     Satisfied(solutions[0], stats)
+  }
+}
+
+///|
+/// Find a solution within at most `node_limit` attempted assignments.
+///
+/// The selected strategy changes search order, not the meaning of the result.
+/// Unlike `Unsatisfied`, `BudgetExhausted` makes no claim about unexplored
+/// branches. Existing unlimited solve APIs are unchanged.
+pub fn Problem::solve_with_node_limit(
+  self : Problem,
+  node_limit : Int,
+  strategy : SearchStrategy,
+) -> Result[BudgetedSolveOutcome, ModelError] {
+  if node_limit <= 0 {
+    return Err(InvalidNodeLimit(node_limit))
+  }
+  let assignment : Array[Int?] = Array::make(self.variables.length(), None)
+  let counters : SearchCounters = {
+    nodes: 0,
+    backtracks: 0,
+    budget_exhausted: false,
+  }
+  let solutions : Array[Solution] = []
+  search(
+    self,
+    assignment,
+    counters,
+    solutions,
+    1,
+    strategy,
+    Some(node_limit),
+    None,
+    0,
+  )
+  let stats : SolveStats = {
+    nodes: counters.nodes,
+    backtracks: counters.backtracks,
+    solutions: solutions.length(),
+  }
+  if solutions.length() > 0 {
+    Ok(Found(solutions[0], stats))
+  } else if counters.budget_exhausted {
+    Ok(BudgetExhausted(stats))
+  } else {
+    Ok(ProvedUnsatisfiable(stats))
   }
 }
 
