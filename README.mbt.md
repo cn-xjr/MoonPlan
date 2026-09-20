@@ -14,7 +14,7 @@ MoonPlan 是一个使用纯 MoonBit 实现的**可解释有限域约束求解与
 
 - 有限域整数变量与稳定变量句柄
 - `Equal`、`NotEqual`、`Different`、`OffsetDifferent`
-- `LessThan`、`AllDifferent`、`SumEquals`、`CountAtMost`
+- `LessThan`、`AllDifferent`、`SumEquals`、`CountAtMost`、`CountBetween`
 - `AllowedTuples` 轮班模板与任意兼容组合表约束
 - `Element` 索引查表约束，可把方案编号映射为成本或资源属性
 - `LinearEquals`、`LinearAtMost` 加权线性约束，可表达预算、工时和容量关系
@@ -29,6 +29,7 @@ MoonPlan 是一个使用纯 MoonBit 实现的**可解释有限域约束求解与
 - `Worker`、`Shift`、`Roster` 领域模型与可运行的人员排班示例
 - `build_balanced_roster` 有界候选优化与工作量均衡评分
 - `build_capped_roster` 每人班次数量硬上限
+- `WorkerQuota` 与 `build_roster_with_quotas` 个人工作量区间
 - `RosterPolicy` 与 `build_roster_with_policy` 最小休息间隔组合规则
 - `AssignmentPenalty` 与 `build_preferred_roster` 软偏好优化
 - `RosterObjective` 与相邻班次疲劳成本优化

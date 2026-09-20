@@ -16,6 +16,7 @@ pub(all) enum Constraint {
   AllDifferent(Array[Var])
   SumEquals(Array[Var], Int)
   CountAtMost(Array[Var], Int, Int)
+  CountBetween(Array[Var], Int, Int, Int)
   AllowedTuples(Array[Var], Array[Array[Int]])
   Element(Var, Array[Int], Var)
   LinearEquals(Array[Var], Array[Int], Int)
@@ -41,6 +42,7 @@ pub(all) enum ModelError {
   ElementIndexOutsideTable(String, Int, Int)
   InvalidCoefficientArity(Int, Int)
   InvalidConstraintLimit(Int)
+  InvalidCountBounds(Int, Int)
   InvalidSolutionLimit(Int)
   InvalidTraceLimit(Int)
   InvalidNodeLimit(Int)
@@ -73,6 +75,8 @@ pub fn ModelError::message(self : ModelError) -> String {
       "linear constraint requires \{expected} coefficients, got \{actual}"
     InvalidConstraintLimit(limit) =>
       "constraint limit must not be negative, got \{limit}"
+    InvalidCountBounds(minimum, maximum) =>
+      "count bounds must satisfy 0 <= minimum <= maximum, got \{minimum}..\{maximum}"
     InvalidSolutionLimit(limit) =>
       "solution limit must be positive, got \{limit}"
     InvalidTraceLimit(limit) =>
@@ -176,6 +180,7 @@ fn constraint_variables(constraint : Constraint) -> Array[Var] {
     AllDifferent(variables)
     | SumEquals(variables, _)
     | CountAtMost(variables, _, _)
+    | CountBetween(variables, _, _, _)
     | AllowedTuples(variables, _)
     | LinearEquals(variables, _, _)
     | LinearAtMost(variables, _, _) => variables
@@ -190,6 +195,8 @@ fn stabilize_constraint(constraint : Constraint) -> Constraint {
     SumEquals(variables, target) => SumEquals(variables.copy(), target)
     CountAtMost(variables, value, limit) =>
       CountAtMost(variables.copy(), value, limit)
+    CountBetween(variables, value, minimum, maximum) =>
+      CountBetween(variables.copy(), value, minimum, maximum)
     AllowedTuples(variables, tuples) => {
       let stable_tuples : Array[Array[Int]] = []
       for tuple in tuples {
@@ -225,6 +232,8 @@ fn Problem::add_constraint_spec(
   match stable_constraint {
     CountAtMost(_, _, limit) if limit < 0 =>
       return Err(InvalidConstraintLimit(limit))
+    CountBetween(_, _, minimum, maximum) if minimum < 0 || maximum < minimum =>
+      return Err(InvalidCountBounds(minimum, maximum))
     _ => ()
   }
   let variables = constraint_variables(stable_constraint)
@@ -538,6 +547,19 @@ fn constraint_possible(
         }
       }
       count <= limit
+    }
+    CountBetween(variables, expected, minimum, maximum) => {
+      let mut assigned_count = 0
+      let mut unassigned_count = 0
+      for variable in variables {
+        match assigned(assignment, variable) {
+          Some(value) if value == expected =>
+            assigned_count = assigned_count + 1
+          Some(_) => ()
+          None => unassigned_count = unassigned_count + 1
+        }
+      }
+      assigned_count <= maximum && assigned_count + unassigned_count >= minimum
     }
     AllowedTuples(variables, tuples) => {
       for tuple in tuples {

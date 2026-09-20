@@ -58,6 +58,14 @@ pub(all) struct RosterPolicy {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+/// An inclusive workload range for one worker.
+pub(all) struct WorkerQuota {
+  worker_id : Int
+  minimum_shifts : Int
+  maximum_shifts : Int
+} derive(Eq, Debug, ToJson, FromJson)
+
+///|
 /// A policy that adds no restrictions beyond skills, availability, and
 /// same-slot exclusivity.
 pub fn RosterPolicy::default() -> RosterPolicy {
@@ -79,6 +87,10 @@ pub(all) enum RosterError {
   DuplicateAssignmentPenalty(Int, Int)
   InvalidAssignmentPenalty(Int, Int, Int)
   InvalidConsecutiveSlotPenalty(Int)
+  UnknownQuotaWorker(Int)
+  DuplicateWorkerQuota(Int)
+  InvalidWorkerQuota(Int, Int, Int)
+  MinimumWorkerQuotaExceedsShiftCount(Int, Int, Int)
   InvalidModel(ModelError)
   Unsatisfiable(SolveStats)
 } derive(Eq, Debug)
@@ -108,6 +120,12 @@ pub fn RosterError::message(self : RosterError) -> String {
       "assignment penalty for worker \{worker_id} and shift \{shift_id} must not be negative, got \{penalty}"
     InvalidConsecutiveSlotPenalty(penalty) =>
       "consecutive slot penalty must not be negative, got \{penalty}"
+    UnknownQuotaWorker(id) => "worker quota refers to unknown worker id: \{id}"
+    DuplicateWorkerQuota(id) => "duplicate worker quota for worker id: \{id}"
+    InvalidWorkerQuota(id, minimum, maximum) =>
+      "worker \{id} quota must satisfy 0 <= minimum <= maximum, got \{minimum}..\{maximum}"
+    MinimumWorkerQuotaExceedsShiftCount(id, minimum, shift_count) =>
+      "worker \{id} minimum workload \{minimum} exceeds the \{shift_count} available shifts"
     InvalidModel(error) => "invalid constraint model: \{error.message()}"
     Unsatisfiable(stats) =>
       "no feasible roster after \{stats.nodes} assignments and \{stats.backtracks} backtracks"
@@ -139,6 +157,71 @@ fn add_workload_constraints(
       ) {
       Ok(_) => ()
       Err(error) => return Err(InvalidModel(error))
+    }
+  }
+  Ok(())
+}
+
+///|
+fn worker_index_for_id(workers : Array[Worker], worker_id : Int) -> Int? {
+  for index = 0; index < workers.length(); index = index + 1 {
+    if workers[index].id == worker_id {
+      return Some(index)
+    }
+  }
+  None
+}
+
+///|
+fn add_worker_quotas(
+  model : RosterModel,
+  workers : Array[Worker],
+  shifts : Array[Shift],
+  quotas : Array[WorkerQuota],
+) -> Result[Unit, RosterError] {
+  for index = 0; index < quotas.length(); index = index + 1 {
+    let quota = quotas[index]
+    if quota.minimum_shifts < 0 || quota.maximum_shifts < quota.minimum_shifts {
+      return Err(
+        InvalidWorkerQuota(
+          quota.worker_id,
+          quota.minimum_shifts,
+          quota.maximum_shifts,
+        ),
+      )
+    }
+    if quota.minimum_shifts > shifts.length() {
+      return Err(
+        MinimumWorkerQuotaExceedsShiftCount(
+          quota.worker_id,
+          quota.minimum_shifts,
+          shifts.length(),
+        ),
+      )
+    }
+    for previous = 0; previous < index; previous = previous + 1 {
+      if quotas[previous].worker_id == quota.worker_id {
+        return Err(DuplicateWorkerQuota(quota.worker_id))
+      }
+    }
+    let worker_index = match worker_index_for_id(workers, quota.worker_id) {
+      None => return Err(UnknownQuotaWorker(quota.worker_id))
+      Some(value) => value
+    }
+    if model.variables.length() > 0 {
+      match
+        model.problem.add_named_constraint(
+          "worker-\{quota.worker_id}:workload-quota",
+          CountBetween(
+            model.variables.copy(),
+            worker_index,
+            quota.minimum_shifts,
+            quota.maximum_shifts,
+          ),
+        ) {
+        Ok(_) => ()
+        Err(error) => return Err(InvalidModel(error))
+      }
     }
   }
   Ok(())
@@ -390,6 +473,49 @@ pub fn build_roster_with_policy(
     Err(error) => Err(error)
     Ok(model) => {
       match apply_roster_policy(model, workers, shifts, policy) {
+        Err(error) => return Err(error)
+        Ok(_) => ()
+      }
+      match model.problem.solve() {
+        Unsatisfied(stats) => Err(Unsatisfiable(stats))
+        Satisfied(solution, stats) =>
+          Ok(
+            roster_from_solution(
+              workers,
+              shifts,
+              model.variables,
+              solution,
+              stats,
+            ),
+          )
+      }
+    }
+  }
+}
+
+///|
+/// Build a roster under global policy rules and per-worker workload quotas.
+///
+/// Quota bounds are inclusive. They compose with the uniform workload cap and
+/// minimum rest gap already provided by `RosterPolicy`.
+pub fn build_roster_with_quotas(
+  workers : Array[Worker],
+  shifts : Array[Shift],
+  policy : RosterPolicy,
+  quotas : Array[WorkerQuota],
+) -> Result[Roster, RosterError] {
+  match validate_roster_policy(policy) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match build_roster_model(workers, shifts) {
+    Err(error) => Err(error)
+    Ok(model) => {
+      match apply_roster_policy(model, workers, shifts, policy) {
+        Err(error) => return Err(error)
+        Ok(_) => ()
+      }
+      match add_worker_quotas(model, workers, shifts, quotas) {
         Err(error) => return Err(error)
         Ok(_) => ()
       }

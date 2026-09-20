@@ -36,7 +36,7 @@ repair suggestion: raise the per-worker workload limit from 1 to 2
 
 - 有限域整数变量与严格的模型边界检查
 - `Equal`、`NotEqual`、`Different`、`OffsetDifferent`
-- `LessThan`、`AllDifferent`、`SumEquals`、`CountAtMost`
+- `LessThan`、`AllDifferent`、`SumEquals`、`CountAtMost`、`CountBetween`
 - `AllowedTuples` 表约束，可表达轮班模板和任意兼容组合
 - `Element` 索引查表约束，可把方案编号映射为成本或资源属性
 - `LinearEquals`、`LinearAtMost` 加权线性约束，可表达预算、工时和容量关系
@@ -50,6 +50,7 @@ repair suggestion: raise the per-worker workload limit from 1 to 2
 - 技能、可用时间和同一时段容量冲突检查
 - 有界候选搜索与工作量均衡评分
 - 每人班次数量硬上限，避免跨时段过度排班
+- `WorkerQuota` 按人员设置最少与最多班次
 - `RosterPolicy` 组合工作量上限与最小休息间隔
 - 非负分配惩罚、偏好优化与工作量均衡同分决策
 - 可组合排班目标，可在分配偏好之外累计相邻班次疲劳成本

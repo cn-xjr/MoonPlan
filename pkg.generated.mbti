@@ -21,6 +21,8 @@ pub fn build_roster(Array[Worker], Array[Shift]) -> Result[Roster, RosterError]
 
 pub fn build_roster_with_policy(Array[Worker], Array[Shift], RosterPolicy) -> Result[Roster, RosterError]
 
+pub fn build_roster_with_quotas(Array[Worker], Array[Shift], RosterPolicy, Array[WorkerQuota]) -> Result[Roster, RosterError]
+
 pub fn decode_roster_optimization_request(String) -> Result[RosterOptimizationRequest, RosterJsonError]
 
 pub fn decode_roster_request(String) -> Result[RosterRequest, RosterJsonError]
@@ -79,6 +81,7 @@ pub(all) enum Constraint {
   AllDifferent(Array[Var])
   SumEquals(Array[Var], Int)
   CountAtMost(Array[Var], Int, Int)
+  CountBetween(Array[Var], Int, Int, Int)
   AllowedTuples(Array[Var], Array[Array[Int]])
   Element(Var, Array[Int], Var)
   LinearEquals(Array[Var], Array[Int], Int)
@@ -109,6 +112,7 @@ pub(all) enum ModelError {
   ElementIndexOutsideTable(String, Int, Int)
   InvalidCoefficientArity(Int, Int)
   InvalidConstraintLimit(Int)
+  InvalidCountBounds(Int, Int)
   InvalidSolutionLimit(Int)
   InvalidTraceLimit(Int)
   InvalidNodeLimit(Int)
@@ -177,6 +181,10 @@ pub(all) enum RosterError {
   DuplicateAssignmentPenalty(Int, Int)
   InvalidAssignmentPenalty(Int, Int, Int)
   InvalidConsecutiveSlotPenalty(Int)
+  UnknownQuotaWorker(Int)
+  DuplicateWorkerQuota(Int)
+  InvalidWorkerQuota(Int, Int, Int)
+  MinimumWorkerQuotaExceedsShiftCount(Int, Int, Int)
   InvalidModel(ModelError)
   Unsatisfiable(SolveStats)
 } derive(Eq, @debug.Debug)
@@ -298,6 +306,12 @@ pub(all) struct Worker {
   name : String
   skills : Array[String]
   available_slots : Array[Int]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct WorkerQuota {
+  worker_id : Int
+  minimum_shifts : Int
+  maximum_shifts : Int
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

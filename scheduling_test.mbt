@@ -192,3 +192,96 @@ test "rejects a negative minimum rest gap" {
     is Err(@moonplan.InvalidRestGap(-1)),
   )
 }
+
+///|
+test "enforces individual worker workload quotas" {
+  let workers : Array[@moonplan.Worker] = [
+    { id: 1, name: "Ada", skills: ["support"], available_slots: [9, 10, 11], },
+    { id: 2, name: "Bo", skills: ["support"], available_slots: [9, 10, 11], },
+  ]
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+    { id: 2, name: "Midday", slot: 10, required_skill: "support", },
+    { id: 3, name: "Evening", slot: 11, required_skill: "support", },
+  ]
+  let roster = @moonplan.build_roster_with_quotas(
+    workers,
+    shifts,
+    @moonplan.RosterPolicy::default(),
+    [{ worker_id: 2, minimum_shifts: 2, maximum_shifts: 2, }],
+  ).unwrap()
+  assert_eq(roster.assignment_count(1), 1)
+  assert_eq(roster.assignment_count(2), 2)
+}
+
+///|
+test "combines worker quotas with rest rules" {
+  let workers : Array[@moonplan.Worker] = [
+    { id: 1, name: "Ada", skills: ["support"], available_slots: [9, 10, 11], },
+    { id: 2, name: "Bo", skills: ["support"], available_slots: [9, 10, 11], },
+  ]
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+    { id: 2, name: "Midday", slot: 10, required_skill: "support", },
+    { id: 3, name: "Evening", slot: 11, required_skill: "support", },
+  ]
+  let roster = @moonplan.build_roster_with_quotas(
+    workers,
+    shifts,
+    { max_shifts_per_worker: None, minimum_slot_gap: 2, },
+    [{ worker_id: 1, minimum_shifts: 2, maximum_shifts: 2, }],
+  ).unwrap()
+  assert_eq(roster.worker_for_shift(1).unwrap().name, "Ada")
+  assert_eq(roster.worker_for_shift(2).unwrap().name, "Bo")
+  assert_eq(roster.worker_for_shift(3).unwrap().name, "Ada")
+}
+
+///|
+test "validates worker workload quotas" {
+  let workers : Array[@moonplan.Worker] = [
+    { id: 1, name: "Ada", skills: ["support"], available_slots: [9], },
+  ]
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+  ]
+  let policy = @moonplan.RosterPolicy::default()
+  assert_true(
+    @moonplan.build_roster_with_quotas(workers, shifts, policy, [
+      { worker_id: 99, minimum_shifts: 0, maximum_shifts: 1, },
+    ])
+    is Err(@moonplan.UnknownQuotaWorker(99)),
+  )
+  assert_true(
+    @moonplan.build_roster_with_quotas(workers, shifts, policy, [
+      { worker_id: 1, minimum_shifts: 2, maximum_shifts: 1, },
+    ])
+    is Err(@moonplan.InvalidWorkerQuota(1, 2, 1)),
+  )
+  assert_true(
+    @moonplan.build_roster_with_quotas(workers, shifts, policy, [
+      { worker_id: 1, minimum_shifts: 0, maximum_shifts: 1, },
+      { worker_id: 1, minimum_shifts: 0, maximum_shifts: 1, },
+    ])
+    is Err(@moonplan.DuplicateWorkerQuota(1)),
+  )
+  assert_true(
+    @moonplan.build_roster_with_quotas(workers, shifts, policy, [
+      { worker_id: 1, minimum_shifts: 2, maximum_shifts: 2, },
+    ])
+    is Err(@moonplan.MinimumWorkerQuotaExceedsShiftCount(1, 2, 1)),
+  )
+}
+
+///|
+test "accepts a zero quota for an empty roster" {
+  let workers : Array[@moonplan.Worker] = [
+    { id: 1, name: "Ada", skills: ["support"], available_slots: [], },
+  ]
+  let roster = @moonplan.build_roster_with_quotas(
+    workers,
+    [],
+    @moonplan.RosterPolicy::default(),
+    [{ worker_id: 1, minimum_shifts: 0, maximum_shifts: 0, }],
+  ).unwrap()
+  assert_eq(roster.entries, [])
+}
