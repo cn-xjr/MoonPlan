@@ -155,8 +155,79 @@ test "trades assignment preference against consecutive work" {
     4,
   ).unwrap()
   assert_eq(result.total_penalty, 5)
+  assert_eq(result.objective_order, @moonplan.WeightedTotal)
   assert_eq(result.roster.worker_for_shift(1).unwrap().name, "Ada")
   assert_eq(result.roster.worker_for_shift(2).unwrap().name, "Bo")
+}
+
+///|
+test "can prioritize assignment preferences over consecutive work" {
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+    { id: 2, name: "Midday", slot: 10, required_skill: "support", },
+  ]
+  let objective : @moonplan.RosterObjective = {
+    assignment_penalties: [
+      { worker_id: 2, shift_id: 1, penalty: 1, },
+      { worker_id: 2, shift_id: 2, penalty: 1, },
+    ],
+    consecutive_slot_penalty: 10,
+  }
+  let weighted = @moonplan.build_preferred_roster_with_objective(
+    preference_workers(),
+    shifts,
+    @moonplan.RosterPolicy::default(),
+    objective,
+    4,
+  ).unwrap()
+  let prioritized = @moonplan.build_preferred_roster_with_order(
+    preference_workers(),
+    shifts,
+    @moonplan.RosterPolicy::default(),
+    objective,
+    @moonplan.AssignmentThenConsecutive,
+    4,
+  ).unwrap()
+  assert_eq(weighted.penalty_breakdown.assignment_total, 1)
+  assert_eq(weighted.penalty_breakdown.consecutive_slot_total, 0)
+  assert_eq(prioritized.penalty_breakdown.assignment_total, 0)
+  assert_eq(prioritized.penalty_breakdown.consecutive_slot_total, 10)
+  assert_eq(prioritized.objective_order, @moonplan.AssignmentThenConsecutive)
+}
+
+///|
+test "can prioritize consecutive work over assignment preferences" {
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+    { id: 2, name: "Midday", slot: 10, required_skill: "support", },
+  ]
+  let objective : @moonplan.RosterObjective = {
+    assignment_penalties: [
+      { worker_id: 2, shift_id: 1, penalty: 100, },
+      { worker_id: 2, shift_id: 2, penalty: 100, },
+    ],
+    consecutive_slot_penalty: 1,
+  }
+  let weighted = @moonplan.build_preferred_roster_with_objective(
+    preference_workers(),
+    shifts,
+    @moonplan.RosterPolicy::default(),
+    objective,
+    4,
+  ).unwrap()
+  let prioritized = @moonplan.build_preferred_roster_with_order(
+    preference_workers(),
+    shifts,
+    @moonplan.RosterPolicy::default(),
+    objective,
+    @moonplan.ConsecutiveThenAssignment,
+    4,
+  ).unwrap()
+  assert_eq(weighted.penalty_breakdown.assignment_total, 0)
+  assert_eq(weighted.penalty_breakdown.consecutive_slot_total, 1)
+  assert_eq(prioritized.penalty_breakdown.assignment_total, 100)
+  assert_eq(prioritized.penalty_breakdown.consecutive_slot_total, 0)
+  assert_eq(prioritized.objective_order, @moonplan.ConsecutiveThenAssignment)
 }
 
 ///|

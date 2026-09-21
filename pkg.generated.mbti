@@ -17,6 +17,8 @@ pub fn build_preferred_roster(Array[Worker], Array[Shift], RosterPolicy, Array[A
 
 pub fn build_preferred_roster_with_objective(Array[Worker], Array[Shift], RosterPolicy, RosterObjective, Int) -> Result[PreferredRoster, RosterError]
 
+pub fn build_preferred_roster_with_order(Array[Worker], Array[Shift], RosterPolicy, RosterObjective, RosterObjectiveOrder, Int) -> Result[PreferredRoster, RosterError]
+
 pub fn build_roster(Array[Worker], Array[Shift]) -> Result[Roster, RosterError]
 
 pub fn build_roster_with_policy(Array[Worker], Array[Shift], RosterPolicy) -> Result[Roster, RosterError]
@@ -142,6 +144,7 @@ pub(all) struct PreferredRoster {
   roster : Roster
   total_penalty : Int
   penalty_breakdown : RosterPenaltyBreakdown
+  objective_order : RosterObjectiveOrder
   balance : BalanceScore
   candidates_evaluated : Int
 } derive(Eq, ToJson, @debug.Debug)
@@ -223,6 +226,13 @@ pub(all) struct RosterObjective {
   consecutive_slot_penalty : Int
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 pub fn RosterObjective::default() -> Self
+
+pub(all) enum RosterObjectiveOrder {
+  WeightedTotal
+  AssignmentThenConsecutive
+  ConsecutiveThenAssignment
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn RosterObjectiveOrder::default() -> Self
 
 pub(all) struct RosterOptimizationRequest {
   workers : Array[Worker]

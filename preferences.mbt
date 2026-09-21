@@ -26,6 +26,24 @@ pub fn RosterObjective::default() -> RosterObjective {
 }
 
 ///|
+/// How objective components are compared when ranking feasible rosters.
+///
+/// `WeightedTotal` preserves the original behavior. The other modes compare
+/// components lexicographically, so a lower-priority component can never
+/// compensate for a worse higher-priority component.
+pub(all) enum RosterObjectiveOrder {
+  WeightedTotal
+  AssignmentThenConsecutive
+  ConsecutiveThenAssignment
+} derive(Eq, Debug, ToJson, FromJson)
+
+///|
+/// Use the backward-compatible weighted total ordering.
+pub fn RosterObjectiveOrder::default() -> RosterObjectiveOrder {
+  WeightedTotal
+}
+
+///|
 /// One assignment preference that contributes to a roster's soft cost.
 pub(all) struct AssignmentPenaltyCharge {
   worker_id : Int
@@ -58,9 +76,21 @@ pub(all) struct PreferredRoster {
   roster : Roster
   total_penalty : Int
   penalty_breakdown : RosterPenaltyBreakdown
+  objective_order : RosterObjectiveOrder
   balance : BalanceScore
   candidates_evaluated : Int
 } derive(Eq, Debug, ToJson)
+
+///|
+priv struct ObjectiveScore {
+  assignment : Int
+  consecutive : Int
+}
+
+///|
+fn ObjectiveScore::total(self : ObjectiveScore) -> Int {
+  self.assignment + self.consecutive
+}
 
 ///|
 fn worker_id_exists(workers : Array[Worker], worker_id : Int) -> Bool {
@@ -168,16 +198,20 @@ fn objective_penalty_breakdown(
 }
 
 ///|
-fn objective_penalty(roster : Roster, objective : RosterObjective) -> Int {
-  let mut total = 0
+fn objective_score(
+  roster : Roster,
+  objective : RosterObjective,
+) -> ObjectiveScore {
+  let mut assignment = 0
   for entry in roster.entries {
     for item in objective.assignment_penalties {
       if item.worker_id == entry.worker.id && item.shift_id == entry.shift.id {
-        total = total + item.penalty
+        assignment = assignment + item.penalty
         break
       }
     }
   }
+  let mut consecutive = 0
   if objective.consecutive_slot_penalty > 0 {
     for left = 0; left < roster.entries.length(); left = left + 1 {
       for right = left + 1; right < roster.entries.length(); right = right + 1 {
@@ -187,23 +221,60 @@ fn objective_penalty(roster : Roster, objective : RosterObjective) -> Int {
             roster.entries[right].shift.slot,
           ) ==
           1 {
-          total = total + objective.consecutive_slot_penalty
+          consecutive = consecutive + objective.consecutive_slot_penalty
         }
       }
     }
   }
-  total
+  { assignment, consecutive, }
+}
+
+///|
+fn compare_objective_scores(
+  score : ObjectiveScore,
+  best_score : ObjectiveScore,
+  order : RosterObjectiveOrder,
+) -> Int {
+  let (primary, best_primary, secondary, best_secondary) = match order {
+    WeightedTotal => (score.total(), best_score.total(), 0, 0)
+    AssignmentThenConsecutive =>
+      (
+        score.assignment,
+        best_score.assignment,
+        score.consecutive,
+        best_score.consecutive,
+      )
+    ConsecutiveThenAssignment =>
+      (
+        score.consecutive,
+        best_score.consecutive,
+        score.assignment,
+        best_score.assignment,
+      )
+  }
+  if primary < best_primary {
+    -1
+  } else if primary > best_primary {
+    1
+  } else if secondary < best_secondary {
+    -1
+  } else if secondary > best_secondary {
+    1
+  } else {
+    0
+  }
 }
 
 ///|
 fn better_preferred_roster(
-  penalty : Int,
+  score : ObjectiveScore,
   balance : BalanceScore,
-  best_penalty : Int,
+  best_score : ObjectiveScore,
   best_balance : BalanceScore,
+  order : RosterObjectiveOrder,
 ) -> Bool {
-  penalty < best_penalty ||
-  (penalty == best_penalty && better_balance(balance, best_balance))
+  let comparison = compare_objective_scores(score, best_score, order)
+  comparison < 0 || (comparison == 0 && better_balance(balance, best_balance))
 }
 
 ///|
@@ -240,6 +311,29 @@ pub fn build_preferred_roster_with_objective(
   shifts : Array[Shift],
   policy : RosterPolicy,
   objective : RosterObjective,
+  candidate_limit : Int,
+) -> Result[PreferredRoster, RosterError] {
+  build_preferred_roster_with_order(
+    workers,
+    shifts,
+    policy,
+    objective,
+    WeightedTotal,
+    candidate_limit,
+  )
+}
+
+///|
+/// Optimize a roster using weighted or lexicographic objective ordering.
+///
+/// Workload balance only breaks ties after the selected objective ordering.
+/// Deterministic solution order breaks any remaining tie.
+pub fn build_preferred_roster_with_order(
+  workers : Array[Worker],
+  shifts : Array[Shift],
+  policy : RosterPolicy,
+  objective : RosterObjective,
+  order : RosterObjectiveOrder,
   candidate_limit : Int,
 ) -> Result[PreferredRoster, RosterError] {
   if candidate_limit <= 0 {
@@ -283,7 +377,7 @@ pub fn build_preferred_roster_with_objective(
             solutions[0],
             stats,
           )
-          let mut best_penalty = objective_penalty(best_roster, objective)
+          let mut best_score = objective_score(best_roster, objective)
           let mut best_balance = balance_score(workers, best_roster)
           for index = 1; index < solutions.length(); index = index + 1 {
             let roster = roster_from_solution(
@@ -293,13 +387,13 @@ pub fn build_preferred_roster_with_objective(
               solutions[index],
               stats,
             )
-            let penalty = objective_penalty(roster, objective)
+            let score = objective_score(roster, objective)
             let balance = balance_score(workers, roster)
             if better_preferred_roster(
-                penalty, balance, best_penalty, best_balance,
+                score, balance, best_score, best_balance, order,
               ) {
               best_roster = roster
-              best_penalty = penalty
+              best_score = score
               best_balance = balance
             }
           }
@@ -308,8 +402,9 @@ pub fn build_preferred_roster_with_objective(
           )
           Ok({
             roster: best_roster,
-            total_penalty: best_penalty,
+            total_penalty: best_score.total(),
             penalty_breakdown: best_breakdown,
+            objective_order: order,
             balance: best_balance,
             candidates_evaluated: solutions.length(),
           })
