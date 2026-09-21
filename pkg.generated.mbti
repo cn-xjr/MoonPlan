@@ -44,6 +44,12 @@ pub(all) struct AssignmentPenalty {
   penalty : Int
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct AssignmentPenaltyCharge {
+  worker_id : Int
+  shift_id : Int
+  penalty : Int
+} derive(Eq, ToJson, @debug.Debug)
+
 pub(all) struct BalanceScore {
   minimum_load : Int
   maximum_load : Int
@@ -71,6 +77,13 @@ pub(all) struct ConflictReport {
   items : Array[ConflictItem]
   solver_runs : Int
 } derive(Eq, @debug.Debug)
+
+pub(all) struct ConsecutiveSlotCharge {
+  worker_id : Int
+  earlier_shift_id : Int
+  later_shift_id : Int
+  penalty : Int
+} derive(Eq, ToJson, @debug.Debug)
 
 pub(all) enum Constraint {
   Equal(Var, Int)
@@ -128,6 +141,7 @@ pub(all) struct OptimizedRoster {
 pub(all) struct PreferredRoster {
   roster : Roster
   total_penalty : Int
+  penalty_breakdown : RosterPenaltyBreakdown
   balance : BalanceScore
   candidates_evaluated : Int
 } derive(Eq, ToJson, @debug.Debug)
@@ -218,6 +232,14 @@ pub(all) struct RosterOptimizationRequest {
   candidate_limit : Int
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 pub fn RosterOptimizationRequest::solve(Self) -> Result[PreferredRoster, RosterError]
+
+pub(all) struct RosterPenaltyBreakdown {
+  assignment_charges : Array[AssignmentPenaltyCharge]
+  consecutive_slot_charges : Array[ConsecutiveSlotCharge]
+  assignment_total : Int
+  consecutive_slot_total : Int
+  total_penalty : Int
+} derive(Eq, ToJson, @debug.Debug)
 
 pub(all) struct RosterPolicy {
   max_shifts_per_worker : Int?

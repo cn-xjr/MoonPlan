@@ -177,6 +177,73 @@ test "charges every adjacent pair in a work sequence" {
     1,
   ).unwrap()
   assert_eq(result.total_penalty, 14)
+  assert_eq(result.penalty_breakdown.assignment_total, 0)
+  assert_eq(result.penalty_breakdown.consecutive_slot_total, 14)
+  assert_eq(result.penalty_breakdown.consecutive_slot_charges.length(), 2)
+  assert_eq(result.penalty_breakdown.consecutive_slot_charges[0], {
+    worker_id: 1,
+    earlier_shift_id: 1,
+    later_shift_id: 2,
+    penalty: 7,
+  })
+  assert_eq(result.penalty_breakdown.consecutive_slot_charges[1], {
+    worker_id: 1,
+    earlier_shift_id: 2,
+    later_shift_id: 3,
+    penalty: 7,
+  })
+}
+
+///|
+test "explains assignment and consecutive slot costs separately" {
+  let workers : Array[@moonplan.Worker] = [
+    { id: 1, name: "Ada", skills: ["support"], available_slots: [9, 10], },
+  ]
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+    { id: 2, name: "Midday", slot: 10, required_skill: "support", },
+  ]
+  let result = @moonplan.build_preferred_roster_with_objective(
+    workers,
+    shifts,
+    @moonplan.RosterPolicy::default(),
+    {
+      assignment_penalties: [{ worker_id: 1, shift_id: 2, penalty: 5, }],
+      consecutive_slot_penalty: 7,
+    },
+    1,
+  ).unwrap()
+  let breakdown = result.penalty_breakdown
+  assert_eq(breakdown.assignment_total, 5)
+  assert_eq(breakdown.consecutive_slot_total, 7)
+  assert_eq(breakdown.total_penalty, result.total_penalty)
+  assert_eq(breakdown.assignment_charges, [
+    { worker_id: 1, shift_id: 2, penalty: 5, },
+  ])
+  assert_eq(breakdown.consecutive_slot_charges, [
+    { worker_id: 1, earlier_shift_id: 1, later_shift_id: 2, penalty: 7, },
+  ])
+}
+
+///|
+test "orders consecutive shift evidence by slot rather than input order" {
+  let workers : Array[@moonplan.Worker] = [
+    { id: 1, name: "Ada", skills: ["support"], available_slots: [9, 10], },
+  ]
+  let shifts : Array[@moonplan.Shift] = [
+    { id: 2, name: "Midday", slot: 10, required_skill: "support", },
+    { id: 1, name: "Morning", slot: 9, required_skill: "support", },
+  ]
+  let result = @moonplan.build_preferred_roster_with_objective(
+    workers,
+    shifts,
+    @moonplan.RosterPolicy::default(),
+    { assignment_penalties: [], consecutive_slot_penalty: 3, },
+    1,
+  ).unwrap()
+  assert_eq(result.penalty_breakdown.consecutive_slot_charges, [
+    { worker_id: 1, earlier_shift_id: 1, later_shift_id: 2, penalty: 3, },
+  ])
 }
 
 ///|
@@ -193,6 +260,8 @@ test "does not charge separated shifts as consecutive" {
     1,
   ).unwrap()
   assert_eq(result.total_penalty, 0)
+  assert_eq(result.penalty_breakdown.assignment_charges, [])
+  assert_eq(result.penalty_breakdown.consecutive_slot_charges, [])
 }
 
 ///|

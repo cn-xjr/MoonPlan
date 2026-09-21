@@ -86,8 +86,14 @@ test "decodes and solves an objective-aware request" {
   assert_eq(request.objective.consecutive_slot_penalty, 20)
   let result = request.solve().unwrap()
   assert_eq(result.total_penalty, 5)
+  assert_eq(result.penalty_breakdown.assignment_total, 5)
+  assert_eq(result.penalty_breakdown.consecutive_slot_total, 0)
+  assert_eq(result.penalty_breakdown.assignment_charges.length(), 1)
   assert_eq(result.roster.worker_for_shift(1).unwrap().name, "Ada")
   assert_eq(result.roster.worker_for_shift(2).unwrap().name, "Bo")
+  let output = @moonplan.encode_preferred_roster(result, 2)
+  assert_true(output.contains("\"penalty_breakdown\""))
+  assert_true(output.contains("\"assignment_total\": 5"))
 }
 
 ///|
