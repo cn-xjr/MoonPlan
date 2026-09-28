@@ -89,6 +89,7 @@ pub(all) enum RosterError {
   DuplicateAssignmentPenalty(Int, Int)
   InvalidAssignmentPenalty(Int, Int, Int)
   InvalidConsecutiveSlotPenalty(Int)
+  InvalidConsecutiveWorkLimit(Int)
   UnknownQuotaWorker(Int)
   DuplicateWorkerQuota(Int)
   InvalidWorkerQuota(Int, Int, Int)
@@ -126,6 +127,8 @@ pub fn RosterError::message(self : RosterError) -> String {
       "assignment penalty for worker \{worker_id} and shift \{shift_id} must not be negative, got \{penalty}"
     InvalidConsecutiveSlotPenalty(penalty) =>
       "consecutive slot penalty must not be negative, got \{penalty}"
+    InvalidConsecutiveWorkLimit(limit) =>
+      "maximum consecutive work slots must be positive, got \{limit}"
     UnknownQuotaWorker(id) => "worker quota refers to unknown worker id: \{id}"
     DuplicateWorkerQuota(id) => "duplicate worker quota for worker id: \{id}"
     InvalidWorkerQuota(id, minimum, maximum) =>

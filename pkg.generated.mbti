@@ -23,6 +23,8 @@ pub fn build_preferred_roster_with_order(Array[Worker], Array[Shift], RosterPoli
 
 pub fn build_roster(Array[Worker], Array[Shift]) -> Result[Roster, RosterError]
 
+pub fn build_roster_with_consecutive_limit(Array[Worker], Array[Shift], RosterPolicy, Int) -> Result[Roster, RosterError]
+
 pub fn build_roster_with_policy(Array[Worker], Array[Shift], RosterPolicy) -> Result[Roster, RosterError]
 
 pub fn build_roster_with_quotas(Array[Worker], Array[Shift], RosterPolicy, Array[WorkerQuota]) -> Result[Roster, RosterError]
@@ -222,6 +224,7 @@ pub(all) enum RosterError {
   DuplicateAssignmentPenalty(Int, Int)
   InvalidAssignmentPenalty(Int, Int, Int)
   InvalidConsecutiveSlotPenalty(Int)
+  InvalidConsecutiveWorkLimit(Int)
   UnknownQuotaWorker(Int)
   DuplicateWorkerQuota(Int)
   InvalidWorkerQuota(Int, Int, Int)

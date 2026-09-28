@@ -32,6 +32,7 @@ MoonPlan 是一个使用纯 MoonBit 实现的**可解释有限域约束求解与
 - `build_capped_roster` 每人班次数量硬上限
 - `WorkerQuota` 与 `build_roster_with_quotas` 个人工作量区间
 - `RosterPolicy` 与 `build_roster_with_policy` 最小休息间隔组合规则
+- `build_roster_with_consecutive_limit` 连续工作时段硬上限
 - `AssignmentPenalty` 与 `build_preferred_roster` 软偏好优化
 - `RosterObjective` 与相邻班次疲劳成本优化
 - `RosterObjectiveOrder` 加权或词典序多级目标排序
