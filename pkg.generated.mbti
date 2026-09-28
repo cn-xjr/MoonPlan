@@ -13,6 +13,8 @@ pub fn build_balanced_roster(Array[Worker], Array[Shift], Int) -> Result[Optimiz
 
 pub fn build_capped_roster(Array[Worker], Array[Shift], Int) -> Result[Roster, RosterError]
 
+pub fn build_coverage_roster(Array[Worker], Array[CoverageRequirement], RosterPolicy) -> Result[CoverageRoster, RosterError]
+
 pub fn build_preferred_roster(Array[Worker], Array[Shift], RosterPolicy, Array[AssignmentPenalty], Int) -> Result[PreferredRoster, RosterError]
 
 pub fn build_preferred_roster_with_objective(Array[Worker], Array[Shift], RosterPolicy, RosterObjective, Int) -> Result[PreferredRoster, RosterError]
@@ -105,6 +107,26 @@ pub(all) enum Constraint {
 
 type ConstraintSpec
 
+pub(all) struct CoverageEntry {
+  requirement : CoverageRequirement
+  position : Int
+  worker : Worker
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct CoverageRequirement {
+  id : Int
+  name : String
+  slot : Int
+  required_skill : String
+  workers_needed : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CoverageRoster {
+  entries : Array[CoverageEntry]
+  stats : SolveStats
+} derive(Eq, ToJson, @debug.Debug)
+pub fn CoverageRoster::workers_for_requirement(Self, Int) -> Array[Worker]
+
 pub(all) enum ExplainOutcome {
   Consistent(SolveStats)
   Inconsistent(ConflictReport)
@@ -188,6 +210,8 @@ pub(all) struct RosterEntry {
 pub(all) enum RosterError {
   DuplicateWorkerId(Int)
   DuplicateShiftId(Int)
+  DuplicateCoverageRequirementId(Int)
+  InvalidCoverageWorkerCount(Int, Int)
   NoEligibleWorker(Int, String)
   InsufficientSlotCapacity(Int, Int, Int)
   InvalidCandidateLimit(Int)

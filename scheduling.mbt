@@ -77,6 +77,8 @@ pub fn RosterPolicy::default() -> RosterPolicy {
 pub(all) enum RosterError {
   DuplicateWorkerId(Int)
   DuplicateShiftId(Int)
+  DuplicateCoverageRequirementId(Int)
+  InvalidCoverageWorkerCount(Int, Int)
   NoEligibleWorker(Int, String)
   InsufficientSlotCapacity(Int, Int, Int)
   InvalidCandidateLimit(Int)
@@ -101,6 +103,10 @@ pub fn RosterError::message(self : RosterError) -> String {
   match self {
     DuplicateWorkerId(id) => "duplicate worker id: \{id}"
     DuplicateShiftId(id) => "duplicate shift id: \{id}"
+    DuplicateCoverageRequirementId(id) =>
+      "duplicate coverage requirement id: \{id}"
+    InvalidCoverageWorkerCount(id, count) =>
+      "coverage requirement \{id} must need at least one worker, got \{count}"
     NoEligibleWorker(id, name) =>
       "shift \{id} (\{name}) has no worker with the required skill and availability"
     InsufficientSlotCapacity(slot, required, assignable) =>
