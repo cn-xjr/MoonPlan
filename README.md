@@ -92,9 +92,15 @@ moon run cmd/week
 
 `cmd/week` 给出七天的岗位覆盖示例：每天早班两名客服、晚班一名前台，包含预先请假的员工与每人最多四班的限制。测试会核对全部 21 个名额、人员资格和工作量上限。CI 在 Linux、macOS 和 Windows 上执行全目标检查与测试。
 
+外部脚本也可以把 `CoverageRequest` JSON 作为 `--json` 参数传给 `cmd/coverage`。命令输出带 `roster` 和 `error` 字段的 JSON；以下 PowerShell 示例读取仓库内的样本文件：
+
+```powershell
+moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw)
+```
+
 ## 下一阶段
 
-1. 为排班示例增加读取外部 JSON 文件的命令行入口与更丰富的真实业务规则。
+1. 为排班示例增加直接读取文件和标准输入的命令行入口与更丰富的真实业务规则。
 2. 在现有多级目标排序上增加新的软成本维度与分支定界优化。
 3. 扩展修复建议，覆盖连续工作硬上限和偏好冲突。
 4. 基于现有 JSON 边界和搜索事件流构建 MoonBit/Wasm 可视化工作台。

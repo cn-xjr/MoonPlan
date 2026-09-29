@@ -1,0 +1,10 @@
+{
+  "workers": [
+    { "id": 1, "name": "An", "skills": ["support"], "available_slots": [9] },
+    { "id": 2, "name": "Bo", "skills": ["support"], "available_slots": [9] }
+  ],
+  "requirements": [
+    { "id": 7, "name": "Help desk", "slot": 9, "required_skill": "support", "workers_needed": 2 }
+  ],
+  "policy": { "max_shifts_per_worker": 1, "minimum_slot_gap": 0 }
+}

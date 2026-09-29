@@ -53,6 +53,8 @@ moon run cmd/week
 
 `cmd/main` 会先生成满足技能和时段约束的排班，再演示当每人最多一班导致无解时，自动建议将统一工作量上限提高到二班。`cmd/week` 展示七天、21 个岗位名额的多人覆盖排班，并验证预先请假和每人最多四班的限制。
 
+`cmd/coverage` 接受 `--json` 参数，输出可供外部脚本处理的排班或错误 JSON。例如在 PowerShell 中运行 `moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw)`。
+
 底层模型可以通过 `add_named_constraint` 保留业务规则名称。无解时调用 `Problem::explain`，即可获得包含原始序号、规则名称和类型化约束的不可再删减冲突集合；策略修复 API 会继续把预检事实和冲突证据转换为增补合格人员、增加时段容量、提高工作量上限或放宽休息间隔等具体建议。
 
 ## 路线图
