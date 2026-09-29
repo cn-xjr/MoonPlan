@@ -32,6 +32,7 @@ MoonPlan 是一个使用纯 MoonBit 实现的**可解释有限域约束求解与
 - `encode_coverage_roster_csv` 导出稳定顺序的岗位名额表格数据
 - `analyze_coverage` 按原始岗位需求定位人员资格与时段容量缺口
 - `encode_coverage_analysis` 导出稳定问题代码与原始业务 ID
+- `analyze_coverage_with_policy` 识别工作量上限造成的总岗位容量缺口
 - `build_balanced_roster` 有界候选优化与工作量均衡评分
 - `build_capped_roster` 每人班次数量硬上限
 - `WorkerQuota` 与 `build_roster_with_quotas` 个人工作量区间

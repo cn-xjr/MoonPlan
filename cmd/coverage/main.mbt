@@ -20,7 +20,12 @@ fn check_coverage(text : String) -> String {
     Err(error) => return response_error(error.message())
     Ok(request) => request
   }
-  match @moonplan.analyze_coverage(request.workers, request.requirements) {
+  match
+    @moonplan.analyze_coverage_with_policy(
+      request.workers,
+      request.requirements,
+      request.policy,
+    ) {
     Err(error) => response_error(error.message())
     Ok(analysis) => @moonplan.encode_coverage_analysis(analysis, 2)
   }
@@ -33,7 +38,11 @@ fn solve_coverage(text : String, csv : Bool) -> String {
     Ok(request) => request
   }
   let analysis = match
-    @moonplan.analyze_coverage(request.workers, request.requirements) {
+    @moonplan.analyze_coverage_with_policy(
+      request.workers,
+      request.requirements,
+      request.policy,
+    ) {
     Err(error) => return response_error(error.message())
     Ok(analysis) => analysis
   }

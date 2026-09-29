@@ -52,6 +52,7 @@ repair suggestion: raise the per-worker workload limit from 1 to 2
 - `encode_coverage_roster_csv` 可把岗位名额导出为稳定、正确转义的表格数据
 - `analyze_coverage` 在求解前定位原始岗位需求的人员资格与时段容量缺口
 - `encode_coverage_analysis` 提供带稳定问题代码与原始业务 ID 的预检 JSON
+- `analyze_coverage_with_policy` 识别工作量上限造成的总岗位容量缺口
 - 技能、可用时间和同一时段容量冲突检查
 - 有界候选搜索与工作量均衡评分
 - 每人班次数量硬上限，避免跨时段过度排班

@@ -9,6 +9,8 @@ import {
 // Values
 pub fn analyze_coverage(Array[Worker], Array[CoverageRequirement]) -> Result[CoverageAnalysis, RosterError]
 
+pub fn analyze_coverage_with_policy(Array[Worker], Array[CoverageRequirement], RosterPolicy) -> Result[CoverageAnalysis, RosterError]
+
 pub fn analyze_roster(Array[Worker], Array[Shift]) -> RosterAnalysis
 
 pub fn build_balanced_roster(Array[Worker], Array[Shift], Int) -> Result[OptimizedRoster, RosterError]
@@ -137,6 +139,7 @@ pub(all) enum CoverageIssue {
   CoverageDuplicateWorkerId(Int)
   CoverageNoEligibleWorker(Int, String)
   CoverageSlotShortfall(Int, Int, Int)
+  CoverageWorkloadShortfall(Int, Int)
 } derive(Eq, @debug.Debug)
 pub fn CoverageIssue::message(Self) -> String
 

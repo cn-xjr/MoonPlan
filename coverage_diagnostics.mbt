@@ -4,6 +4,7 @@ pub(all) enum CoverageIssue {
   CoverageDuplicateWorkerId(Int)
   CoverageNoEligibleWorker(Int, String)
   CoverageSlotShortfall(Int, Int, Int)
+  CoverageWorkloadShortfall(Int, Int)
 } derive(Eq, Debug)
 
 ///|
@@ -15,6 +16,8 @@ pub fn CoverageIssue::message(self : CoverageIssue) -> String {
       "coverage requirement \{id} (\{name}) has no eligible worker"
     CoverageSlotShortfall(slot, required, assignable) =>
       "slot \{slot} needs \{required} workers, but at most \{assignable} positions can be filled"
+    CoverageWorkloadShortfall(required, assignable) =>
+      "coverage needs \{required} assignments, but worker workload limits allow at most \{assignable}"
   }
 }
 
@@ -79,4 +82,58 @@ pub fn analyze_coverage(
     }
   }
   Ok({ issues, })
+}
+
+///|
+/// Find definite coverage conflicts under the requested roster policy.
+///
+/// The workload bound counts each worker's distinct eligible slots, capped
+/// by their workload limit. Rest rules can make capacity smaller, so a
+/// passing analysis is not a proof that a roster exists.
+pub fn analyze_coverage_with_policy(
+  workers : Array[Worker],
+  requirements : Array[CoverageRequirement],
+  policy : RosterPolicy,
+) -> Result[CoverageAnalysis, RosterError] {
+  match validate_roster_policy(policy) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let analysis = match analyze_coverage(workers, requirements) {
+    Err(error) => return Err(error)
+    Ok(analysis) => analysis
+  }
+  if !analysis.is_feasible() {
+    return Ok(analysis)
+  }
+  match policy.max_shifts_per_worker {
+    None => Ok(analysis)
+    Some(limit) => {
+      let mut required = 0
+      for requirement in requirements {
+        required = required + requirement.workers_needed
+      }
+      let mut assignable = 0
+      for worker in workers {
+        let slots : Array[Int] = []
+        for requirement in requirements {
+          if worker.skills.contains(requirement.required_skill) &&
+            worker.available_slots.contains(requirement.slot) &&
+            !int_member(slots, requirement.slot) {
+            slots.push(requirement.slot)
+          }
+        }
+        let worker_capacity = if slots.length() < limit {
+          slots.length()
+        } else {
+          limit
+        }
+        assignable = assignable + worker_capacity
+      }
+      if assignable < required {
+        analysis.issues.push(CoverageWorkloadShortfall(required, assignable))
+      }
+      Ok(analysis)
+    }
+  }
 }
