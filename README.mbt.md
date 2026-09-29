@@ -29,6 +29,7 @@ MoonPlan 是一个使用纯 MoonBit 实现的**可解释有限域约束求解与
 - `Worker`、`Shift`、`Roster` 领域模型与可运行的人员排班示例
 - `CoverageRequirement` 与多人岗位覆盖排班
 - `CoverageRequest` 可从 JSON 解码并输出包含岗位名额的排班结果
+- `analyze_coverage` 按原始岗位需求定位人员资格与时段容量缺口
 - `build_balanced_roster` 有界候选优化与工作量均衡评分
 - `build_capped_roster` 每人班次数量硬上限
 - `WorkerQuota` 与 `build_roster_with_quotas` 个人工作量区间

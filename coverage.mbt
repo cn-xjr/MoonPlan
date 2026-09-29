@@ -26,6 +26,13 @@ pub(all) struct CoverageRoster {
 } derive(Eq, Debug, ToJson)
 
 ///|
+priv struct CoverageExpansion {
+  shifts : Array[Shift]
+  requirement_indexes : Array[Int]
+  positions : Array[Int]
+}
+
+///|
 fn validate_coverage_requirements(
   requirements : Array[CoverageRequirement],
 ) -> Result[Unit, RosterError] {
@@ -46,6 +53,33 @@ fn validate_coverage_requirements(
 }
 
 ///|
+fn expand_coverage_requirements(
+  requirements : Array[CoverageRequirement],
+) -> CoverageExpansion {
+  let shifts : Array[Shift] = []
+  let requirement_indexes : Array[Int] = []
+  let positions : Array[Int] = []
+  for requirement_index = 0
+      requirement_index < requirements.length()
+      requirement_index = requirement_index + 1 {
+    let requirement = requirements[requirement_index]
+    for position = 1
+        position <= requirement.workers_needed
+        position = position + 1 {
+      shifts.push({
+        id: shifts.length(),
+        name: "\{requirement.name} #\{position}",
+        slot: requirement.slot,
+        required_skill: requirement.required_skill,
+      })
+      requirement_indexes.push(requirement_index)
+      positions.push(position)
+    }
+  }
+  { shifts, requirement_indexes, positions, }
+}
+
+///|
 /// Fill every requested position under the standard roster policy.
 ///
 /// A worker cannot fill two positions in the same slot. Skill, availability,
@@ -59,36 +93,16 @@ pub fn build_coverage_roster(
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  let shifts : Array[Shift] = []
-  let requirement_indexes : Array[Int] = []
-  let positions : Array[Int] = []
-  for requirement_index = 0
-      requirement_index < requirements.length()
-      requirement_index = requirement_index + 1 {
-    let requirement = requirements[requirement_index]
-    for position = 1
-        position <= requirement.workers_needed
-        position = position + 1 {
-      let shift_id = shifts.length()
-      shifts.push({
-        id: shift_id,
-        name: "\{requirement.name} #\{position}",
-        slot: requirement.slot,
-        required_skill: requirement.required_skill,
-      })
-      requirement_indexes.push(requirement_index)
-      positions.push(position)
-    }
-  }
-  match build_roster_with_policy(workers, shifts, policy) {
+  let expansion = expand_coverage_requirements(requirements)
+  match build_roster_with_policy(workers, expansion.shifts, policy) {
     Err(error) => Err(error)
     Ok(roster) => {
       let entries : Array[CoverageEntry] = []
       for entry in roster.entries {
         let shift_index = entry.shift.id
         entries.push({
-          requirement: requirements[requirement_indexes[shift_index]],
-          position: positions[shift_index],
+          requirement: requirements[expansion.requirement_indexes[shift_index]],
+          position: expansion.positions[shift_index],
           worker: entry.worker,
         })
       }

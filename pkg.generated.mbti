@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub fn analyze_coverage(Array[Worker], Array[CoverageRequirement]) -> Result[CoverageAnalysis, RosterError]
+
 pub fn analyze_roster(Array[Worker], Array[Shift]) -> RosterAnalysis
 
 pub fn build_balanced_roster(Array[Worker], Array[Shift], Int) -> Result[OptimizedRoster, RosterError]
@@ -113,11 +115,24 @@ pub(all) enum Constraint {
 
 type ConstraintSpec
 
+pub(all) struct CoverageAnalysis {
+  issues : Array[CoverageIssue]
+} derive(Eq, @debug.Debug)
+pub fn CoverageAnalysis::is_feasible(Self) -> Bool
+pub fn CoverageAnalysis::summary(Self) -> String
+
 pub(all) struct CoverageEntry {
   requirement : CoverageRequirement
   position : Int
   worker : Worker
 } derive(Eq, ToJson, @debug.Debug)
+
+pub(all) enum CoverageIssue {
+  CoverageDuplicateWorkerId(Int)
+  CoverageNoEligibleWorker(Int, String)
+  CoverageSlotShortfall(Int, Int, Int)
+} derive(Eq, @debug.Debug)
+pub fn CoverageIssue::message(Self) -> String
 
 pub(all) struct CoverageRequest {
   workers : Array[Worker]
