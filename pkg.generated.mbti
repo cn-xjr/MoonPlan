@@ -37,6 +37,8 @@ pub fn decode_roster_optimization_request(String) -> Result[RosterOptimizationRe
 
 pub fn decode_roster_request(String) -> Result[RosterRequest, RosterJsonError]
 
+pub fn encode_coverage_analysis(CoverageAnalysis, Int) -> String
+
 pub fn encode_coverage_roster(CoverageRoster, Int) -> String
 
 pub fn encode_coverage_roster_csv(CoverageRoster) -> String

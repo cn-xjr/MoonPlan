@@ -31,6 +31,7 @@ MoonPlan 是一个使用纯 MoonBit 实现的**可解释有限域约束求解与
 - `CoverageRequest` 可从 JSON 解码并输出包含岗位名额的排班结果
 - `encode_coverage_roster_csv` 导出稳定顺序的岗位名额表格数据
 - `analyze_coverage` 按原始岗位需求定位人员资格与时段容量缺口
+- `encode_coverage_analysis` 导出稳定问题代码与原始业务 ID
 - `build_balanced_roster` 有界候选优化与工作量均衡评分
 - `build_capped_roster` 每人班次数量硬上限
 - `WorkerQuota` 与 `build_roster_with_quotas` 个人工作量区间
@@ -56,6 +57,7 @@ moon run cmd/week
 
 `cmd/coverage` 接受 `--json` 参数，输出可供外部脚本处理的排班或错误 JSON。例如在 PowerShell 中运行 `moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw)`。
 添加 `--format csv` 可按岗位名额导出 CSV；错误仍以 JSON 返回。
+添加 `--check` 可只运行人员资格和单时段容量预检，并取得结构化问题 JSON；预检通过不保证完整排班有解。
 
 底层模型可以通过 `add_named_constraint` 保留业务规则名称。无解时调用 `Problem::explain`，即可获得包含原始序号、规则名称和类型化约束的不可再删减冲突集合；策略修复 API 会继续把预检事实和冲突证据转换为增补合格人员、增加时段容量、提高工作量上限或放宽休息间隔等具体建议。
 

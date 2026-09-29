@@ -51,6 +51,7 @@ repair suggestion: raise the per-worker workload limit from 1 to 2
 - `CoverageRequest` 支持多人覆盖需求的 JSON 导入、求解与结果导出
 - `encode_coverage_roster_csv` 可把岗位名额导出为稳定、正确转义的表格数据
 - `analyze_coverage` 在求解前定位原始岗位需求的人员资格与时段容量缺口
+- `encode_coverage_analysis` 提供带稳定问题代码与原始业务 ID 的预检 JSON
 - 技能、可用时间和同一时段容量冲突检查
 - 有界候选搜索与工作量均衡评分
 - 每人班次数量硬上限，避免跨时段过度排班
@@ -98,9 +99,11 @@ moon run cmd/week
 ```powershell
 moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw)
 moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw) --format csv
+moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw) --check
 ```
 
 CSV 输出按岗位名额逐行列出需求与人员；名称中的逗号、引号、换行会正确转义，类似公式的名称会作为文本处理。输入或排班失败时仍返回包含 `error` 的 JSON。
+`--check` 只运行人员资格与单时段容量预检，返回 `preflight_passed` 和结构化 `issues`；即使通过预检，工作量与休息约束仍可能使完整求解无解。
 
 ## 下一阶段
 

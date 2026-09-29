@@ -15,6 +15,18 @@ fn response_error(message : String) -> String {
 }
 
 ///|
+fn check_coverage(text : String) -> String {
+  let request = match @moonplan.decode_coverage_request(text) {
+    Err(error) => return response_error(error.message())
+    Ok(request) => request
+  }
+  match @moonplan.analyze_coverage(request.workers, request.requirements) {
+    Err(error) => response_error(error.message())
+    Ok(analysis) => @moonplan.encode_coverage_analysis(analysis, 2)
+  }
+}
+
+///|
 fn solve_coverage(text : String, csv : Bool) -> String {
   let request = match @moonplan.decode_coverage_request(text) {
     Err(error) => return response_error(error.message())
@@ -82,11 +94,20 @@ fn json_argument(args : Array[String]) -> String? {
 fn main {
   let args = @env.args()
   match (json_argument(args), output_csv(args)) {
-    (Some(text), Some(csv)) => println(solve_coverage(text, csv))
+    (Some(text), Some(csv)) =>
+      if args.contains("--check") {
+        if csv {
+          println(response_error("--check cannot be combined with CSV output"))
+        } else {
+          println(check_coverage(text))
+        }
+      } else {
+        println(solve_coverage(text, csv))
+      }
     _ =>
       println(
         response_error(
-          "usage: moon run cmd/coverage --json '<coverage-request-json>' [--format json|csv]",
+          "usage: moon run cmd/coverage --json '<coverage-request-json>' [--check | --format json|csv]",
         ),
       )
   }

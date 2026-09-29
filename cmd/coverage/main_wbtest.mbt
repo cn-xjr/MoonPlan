@@ -50,3 +50,19 @@ test "coverage command selects CSV without changing JSON error responses" {
   let error = solve_coverage("{", true)
   assert_true(@json.parse(error) is Object(_))
 }
+
+///|
+test "coverage command exposes structured preflight without solving" {
+  let passing = check_coverage(sample_json())
+  assert_true(passing.contains("\"preflight_passed\": true"))
+  assert_true(passing.contains("\"issues\": []"))
+  let limited = sample_json().replace(
+    old="\"available_slots\":[9]",
+    new="\"available_slots\":[]",
+  )
+  let failing = check_coverage(limited)
+  assert_true(failing.contains("\"code\": \"slot_shortfall\""))
+  assert_true(failing.contains("\"required\": 2"))
+  assert_true(failing.contains("\"assignable\": 1"))
+  assert_true(@json.parse(check_coverage("{")) is Object(_))
+}
