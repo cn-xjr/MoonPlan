@@ -49,6 +49,7 @@ repair suggestion: raise the per-worker workload limit from 1 to 2
 - `Worker`、`Shift`、`Roster` 排班领域模型
 - `CoverageRequirement` 直接表达同一岗位、同一时段的多人覆盖需求
 - `CoverageRequest` 支持多人覆盖需求的 JSON 导入、求解与结果导出
+- `encode_coverage_roster_csv` 可把岗位名额导出为稳定、正确转义的表格数据
 - `analyze_coverage` 在求解前定位原始岗位需求的人员资格与时段容量缺口
 - 技能、可用时间和同一时段容量冲突检查
 - 有界候选搜索与工作量均衡评分
@@ -96,7 +97,10 @@ moon run cmd/week
 
 ```powershell
 moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw)
+moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw) --format csv
 ```
+
+CSV 输出按岗位名额逐行列出需求与人员；名称中的逗号、引号、换行会正确转义，类似公式的名称会作为文本处理。输入或排班失败时仍返回包含 `error` 的 JSON。
 
 ## 下一阶段
 

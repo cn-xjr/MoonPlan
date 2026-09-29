@@ -7,7 +7,7 @@ fn sample_json() -> String {
 
 ///|
 test "coverage command emits machine-readable roster" {
-  let output = solve_coverage_json(sample_json())
+  let output = solve_coverage(sample_json(), false)
   let response = @json.parse(output)
   assert_true(response is Object({ "roster": Object(_), "error": Null, .. }))
   assert_true(output.contains("\"position\": 1"))
@@ -18,14 +18,14 @@ test "coverage command emits machine-readable roster" {
 
 ///|
 test "coverage command returns schema and preflight errors as JSON" {
-  let malformed = solve_coverage_json("{")
+  let malformed = solve_coverage("{", false)
   assert_true(malformed.contains("invalid JSON"))
   assert_true(@json.parse(malformed) is Object(_))
   let unstaffed = sample_json().replace(
     old="\"available_slots\":[9]",
     new="\"available_slots\":[]",
   )
-  let output = solve_coverage_json(unstaffed)
+  let output = solve_coverage(unstaffed, false)
   assert_true(output.contains("slot 9 needs 2 workers"))
   assert_true(@json.parse(output) is Object(_))
 }
@@ -36,4 +36,17 @@ test "coverage command locates JSON after host-specific executable arguments" {
   assert_eq(json_argument(["node", "app.js", "--json", "{}"]), Some("{}"))
   assert_true(json_argument(["runner"]) is None)
   assert_true(json_argument(["runner", "--json", "{}", "--json", "[]"]) is None)
+}
+
+///|
+test "coverage command selects CSV without changing JSON error responses" {
+  assert_eq(output_csv(["runner"]), Some(false))
+  assert_eq(output_csv(["runner", "--format", "csv"]), Some(true))
+  assert_true(output_csv(["runner", "--format", "xml"]) is None)
+  assert_true(output_csv(["runner", "--format"]) is None)
+  let csv = solve_coverage(sample_json(), true)
+  assert_true(csv.has_prefix("requirement_id,requirement_name"))
+  assert_true(csv.contains("\r\n7,Help,9,2,2,Bo"))
+  let error = solve_coverage("{", true)
+  assert_true(@json.parse(error) is Object(_))
 }

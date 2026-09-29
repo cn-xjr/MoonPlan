@@ -39,6 +39,8 @@ pub fn decode_roster_request(String) -> Result[RosterRequest, RosterJsonError]
 
 pub fn encode_coverage_roster(CoverageRoster, Int) -> String
 
+pub fn encode_coverage_roster_csv(CoverageRoster) -> String
+
 pub fn encode_preferred_roster(PreferredRoster, Int) -> String
 
 pub fn int_domain(Int, Int) -> Array[Int]

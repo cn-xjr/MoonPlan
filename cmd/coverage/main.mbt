@@ -15,7 +15,7 @@ fn response_error(message : String) -> String {
 }
 
 ///|
-fn solve_coverage_json(text : String) -> String {
+fn solve_coverage(text : String, csv : Bool) -> String {
   let request = match @moonplan.decode_coverage_request(text) {
     Err(error) => return response_error(error.message())
     Ok(request) => request
@@ -31,6 +31,9 @@ fn solve_coverage_json(text : String) -> String {
   match request.solve() {
     Err(error) => response_error(error.message())
     Ok(roster) => {
+      if csv {
+        return @moonplan.encode_coverage_roster_csv(roster)
+      }
       let absent : String? = None
       let response : CoverageCliResponse = {
         roster: @json.to_json(roster),
@@ -39,6 +42,26 @@ fn solve_coverage_json(text : String) -> String {
       @json.to_json(response).stringify(indent=2)
     }
   }
+}
+
+///|
+fn output_csv(args : Array[String]) -> Bool? {
+  let mut found = false
+  let mut csv = false
+  for index = 0; index < args.length(); index = index + 1 {
+    if args[index] == "--format" {
+      if found || index + 1 >= args.length() {
+        return None
+      }
+      found = true
+      match args[index + 1] {
+        "json" => csv = false
+        "csv" => csv = true
+        _ => return None
+      }
+    }
+  }
+  Some(csv)
 }
 
 ///|
@@ -57,13 +80,14 @@ fn json_argument(args : Array[String]) -> String? {
 
 ///|
 fn main {
-  match json_argument(@env.args()) {
-    None =>
+  let args = @env.args()
+  match (json_argument(args), output_csv(args)) {
+    (Some(text), Some(csv)) => println(solve_coverage(text, csv))
+    _ =>
       println(
         response_error(
-          "usage: moon run cmd/coverage --json '<coverage-request-json>'",
+          "usage: moon run cmd/coverage --json '<coverage-request-json>' [--format json|csv]",
         ),
       )
-    Some(text) => println(solve_coverage_json(text))
   }
 }
