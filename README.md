@@ -58,6 +58,7 @@ repair suggestion: raise the per-worker workload limit from 1 to 2
 - `WorkerQuota` 按人员设置最少与最多班次
 - `RosterPolicy` 组合工作量上限与最小休息间隔
 - 连续工作时段硬上限，避免人员覆盖过长的连续班次
+- `CoverageRequest::solve_with_consecutive_limit` 将连续工作上限应用于多人岗位覆盖
 - 非负分配惩罚、偏好优化与工作量均衡同分决策
 - 可组合排班目标，可在分配偏好之外累计相邻班次疲劳成本
 - 支持加权总分、分配偏好优先、连续班次优先三种目标排序

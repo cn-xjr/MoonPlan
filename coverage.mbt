@@ -80,6 +80,24 @@ fn expand_coverage_requirements(
 }
 
 ///|
+fn coverage_roster_from_roster(
+  roster : Roster,
+  requirements : Array[CoverageRequirement],
+  expansion : CoverageExpansion,
+) -> CoverageRoster {
+  let entries : Array[CoverageEntry] = []
+  for entry in roster.entries {
+    let shift_index = entry.shift.id
+    entries.push({
+      requirement: requirements[expansion.requirement_indexes[shift_index]],
+      position: expansion.positions[shift_index],
+      worker: entry.worker,
+    })
+  }
+  { entries, stats: roster.stats, }
+}
+
+///|
 /// Fill every requested position under the standard roster policy.
 ///
 /// A worker cannot fill two positions in the same slot. Skill, availability,
@@ -96,18 +114,37 @@ pub fn build_coverage_roster(
   let expansion = expand_coverage_requirements(requirements)
   match build_roster_with_policy(workers, expansion.shifts, policy) {
     Err(error) => Err(error)
-    Ok(roster) => {
-      let entries : Array[CoverageEntry] = []
-      for entry in roster.entries {
-        let shift_index = entry.shift.id
-        entries.push({
-          requirement: requirements[expansion.requirement_indexes[shift_index]],
-          position: expansion.positions[shift_index],
-          worker: entry.worker,
-        })
-      }
-      Ok({ entries, stats: roster.stats, })
-    }
+    Ok(roster) =>
+      Ok(coverage_roster_from_roster(roster, requirements, expansion))
+  }
+}
+
+///|
+/// Fill multi-worker demands while limiting consecutive occupied slots.
+///
+/// This applies the same skill, availability, workload, and rest policy as
+/// `build_coverage_roster`, plus the requested consecutive-work limit.
+pub fn build_coverage_roster_with_consecutive_limit(
+  workers : Array[Worker],
+  requirements : Array[CoverageRequirement],
+  policy : RosterPolicy,
+  maximum_consecutive_slots : Int,
+) -> Result[CoverageRoster, RosterError] {
+  match validate_coverage_requirements(requirements) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let expansion = expand_coverage_requirements(requirements)
+  match
+    build_roster_with_consecutive_limit(
+      workers,
+      expansion.shifts,
+      policy,
+      maximum_consecutive_slots,
+    ) {
+    Err(error) => Err(error)
+    Ok(roster) =>
+      Ok(coverage_roster_from_roster(roster, requirements, expansion))
   }
 }
 

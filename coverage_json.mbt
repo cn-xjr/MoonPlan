@@ -29,6 +29,20 @@ pub fn CoverageRequest::solve(
 }
 
 ///|
+/// Solve a JSON-compatible request with a consecutive-work hard limit.
+pub fn CoverageRequest::solve_with_consecutive_limit(
+  self : CoverageRequest,
+  maximum_consecutive_slots : Int,
+) -> Result[CoverageRoster, RosterError] {
+  build_coverage_roster_with_consecutive_limit(
+    self.workers,
+    self.requirements,
+    self.policy,
+    maximum_consecutive_slots,
+  )
+}
+
+///|
 /// Encode a coverage roster and its search statistics as JSON text.
 pub fn encode_coverage_roster(roster : CoverageRoster, indent : Int) -> String {
   @json.to_json(roster).stringify(indent~)
