@@ -48,6 +48,7 @@ repair suggestion: raise the per-worker workload limit from 1 to 2
 - 排班预检、冲突证据，以及工作量上限与休息间隔修复建议
 - `Worker`、`Shift`、`Roster` 排班领域模型
 - `CoverageRequirement` 直接表达同一岗位、同一时段的多人覆盖需求
+- `CoverageRequest` 支持多人覆盖需求的 JSON 导入、求解与结果导出
 - 技能、可用时间和同一时段容量冲突检查
 - 有界候选搜索与工作量均衡评分
 - 每人班次数量硬上限，避免跨时段过度排班

@@ -29,9 +29,13 @@ pub fn build_roster_with_policy(Array[Worker], Array[Shift], RosterPolicy) -> Re
 
 pub fn build_roster_with_quotas(Array[Worker], Array[Shift], RosterPolicy, Array[WorkerQuota]) -> Result[Roster, RosterError]
 
+pub fn decode_coverage_request(String) -> Result[CoverageRequest, RosterJsonError]
+
 pub fn decode_roster_optimization_request(String) -> Result[RosterOptimizationRequest, RosterJsonError]
 
 pub fn decode_roster_request(String) -> Result[RosterRequest, RosterJsonError]
+
+pub fn encode_coverage_roster(CoverageRoster, Int) -> String
 
 pub fn encode_preferred_roster(PreferredRoster, Int) -> String
 
@@ -114,6 +118,13 @@ pub(all) struct CoverageEntry {
   position : Int
   worker : Worker
 } derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct CoverageRequest {
+  workers : Array[Worker]
+  requirements : Array[CoverageRequirement]
+  policy : RosterPolicy
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn CoverageRequest::solve(Self) -> Result[CoverageRoster, RosterError]
 
 pub(all) struct CoverageRequirement {
   id : Int
