@@ -14,11 +14,25 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install MoonBit
         uses: hustcer/setup-moonbit@v1
-      - name: Check and test all targets
+      - name: Check and test portable targets
         run: |
           moon version --all
-          moon check --target all --deny-warn
-          moon test --target all --deny-warn
+          # Warning 79 is the current toolchain's implicit derive-method migration notice.
+          moon check --target wasm --deny-warn --warn-list "-79"
+          moon check --target wasm-gc --deny-warn --warn-list "-79"
+          moon check --target js --deny-warn --warn-list "-79"
+          moon test --target wasm --deny-warn --warn-list "-79"
+          moon test --target wasm-gc --deny-warn --warn-list "-79"
+          moon test --target js --deny-warn --warn-list "-79"
+      - name: Check and test native target
+        if: runner.os == 'Linux'
+        run: |
+          moon check --target native --deny-warn --warn-list "-79"
+          moon test --target native --deny-warn --warn-list "-79"
+      - name: Run examples and verify generated files
+        run: |
+          moon run --target wasm --deny-warn --warn-list "-79" cmd/main
+          moon run --target wasm --deny-warn --warn-list "-79" cmd/week
           moon info
           moon fmt
           git diff --exit-code
