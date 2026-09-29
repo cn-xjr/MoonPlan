@@ -83,16 +83,17 @@ flowchart LR
 ```bash
 git clone https://github.com/cn-xjr/MoonPlan.git
 cd MoonPlan
-moon check --deny-warn
-moon test --deny-warn
+moon check
+moon test
 moon run cmd/main
+moon run cmd/week
 ```
 
-当前测试覆盖四皇后、多解枚举、不可满足问题、模型校验，以及人员技能、可用时间、同一时段冲突和工作量上限。CI 在 Linux、macOS 和 Windows 上执行全目标检查与测试。
+`cmd/week` 给出七天的岗位覆盖示例：每天早班两名客服、晚班一名前台，包含预先请假的员工与每人最多四班的限制。测试会核对全部 21 个名额、人员资格和工作量上限。CI 在 Linux、macOS 和 Windows 上执行全目标检查与测试。
 
 ## 下一阶段
 
-1. 建立可导入的真实周排班案例，并继续完善覆盖需求模型。
+1. 为排班示例增加读取外部 JSON 文件的命令行入口与更丰富的真实业务规则。
 2. 在现有多级目标排序上增加新的软成本维度与分支定界优化。
 3. 扩展修复建议，覆盖连续工作硬上限和偏好冲突。
 4. 基于现有 JSON 边界和搜索事件流构建 MoonBit/Wasm 可视化工作台。
