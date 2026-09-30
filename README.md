@@ -108,6 +108,8 @@ moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw) --node-li
 CSV 输出按岗位名额逐行列出需求与人员；名称中的逗号、引号、换行会正确转义，类似公式的名称会作为文本处理。输入或排班失败时仍返回包含 `error` 的 JSON。
 `--check` 只运行人员资格与单时段容量预检，返回 `preflight_passed` 和结构化 `issues`；即使通过预检，工作量与休息约束仍可能使完整求解无解。`--node-limit N` 返回带 `status` 和 `stats` 的有界结果：`found` 表示找到排班，`unsatisfiable` 表示在预算内证明无解，`budget_exhausted` 表示搜索尚未完成，不能当作无解。
 
+`examples/coverage_week.json` 是一个可公开复现的六时段、多技能、多人覆盖样例，包含前台、支持和带班资格，可用同一组命令验证预检、求解和预算行为。
+
 ## 下一阶段
 
 1. 为排班示例增加直接读取文件和标准输入的命令行入口与更丰富的真实业务规则。
