@@ -80,3 +80,13 @@ test "coverage search validates budget separately from feasibility" {
     is Err(@moonplan.InvalidModel(@moonplan.InvalidNodeLimit(0))),
   )
 }
+
+///|
+test "bounded coverage outcomes have one stable JSON envelope" {
+  let request = budget_coverage_request()
+  let outcome = request.solve_with_node_limit(1).unwrap()
+  let encoded = @moonplan.encode_coverage_solve_outcome(outcome, 0)
+  assert_true(encoded.contains("budget_exhausted"))
+  assert_true(encoded.contains("\"roster\""))
+  assert_true(encoded.contains("\"stats\""))
+}

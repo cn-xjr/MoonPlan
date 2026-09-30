@@ -10,9 +10,9 @@ pub(all) struct CoverageRequest {
 /// Stable JSON envelope for a bounded coverage search.
 pub(all) struct CoverageSolveResponse {
   status : String
-  roster : CoverageRoster?
-  stats : SolveStats
-  error : String?
+  roster : Json
+  stats : Json
+  error : Json
 } derive(ToJson)
 
 ///|
@@ -77,14 +77,24 @@ pub fn encode_coverage_solve_outcome(
     CoverageFound(roster) =>
       {
         status: "found",
-        roster: Some(roster),
-        stats: roster.stats,
-        error: absent,
+        roster: @json.to_json(roster),
+        stats: @json.to_json(roster.stats),
+        error: @json.to_json(absent),
       }
     CoverageProvedUnsatisfiable(stats) =>
-      { status: "unsatisfiable", roster: None, stats, error: absent, }
+      {
+        status: "unsatisfiable",
+        roster: @json.to_json(absent),
+        stats: @json.to_json(stats),
+        error: @json.to_json(absent),
+      }
     CoverageBudgetExhausted(stats) =>
-      { status: "budget_exhausted", roster: None, stats, error: absent, }
+      {
+        status: "budget_exhausted",
+        roster: @json.to_json(absent),
+        stats: @json.to_json(stats),
+        error: @json.to_json(absent),
+      }
   }
   @json.to_json(response).stringify(indent~)
 }
