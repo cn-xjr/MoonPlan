@@ -94,7 +94,7 @@ moon run cmd/main
 moon run cmd/week
 ```
 
-`cmd/week` 给出七天的岗位覆盖示例：每天早班两名客服、晚班一名前台，包含预先请假的员工与每人最多四班的限制。测试会核对全部 21 个名额、人员资格和工作量上限。CI 在 Linux、macOS 和 Windows 上执行全目标检查与测试。
+`cmd/week` 给出七天的岗位覆盖示例：每天早班两名客服、晚班一名前台，包含预先请假的员工与每人最多四班的限制。测试会核对全部 21 个名额、人员资格和工作量上限。CI 对可用的 Wasm、WasmGC 与 JS 目标执行检查和测试；原生目标保留给本地工具链验证。
 
 外部脚本也可以把 `CoverageRequest` JSON 作为 `--json` 参数传给 `cmd/coverage`。命令输出带 `roster` 和 `error` 字段的 JSON；以下 PowerShell 示例读取仓库内的样本文件：
 
@@ -102,10 +102,11 @@ moon run cmd/week
 moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw)
 moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw) --format csv
 moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw) --check
+moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw) --node-limit 100
 ```
 
 CSV 输出按岗位名额逐行列出需求与人员；名称中的逗号、引号、换行会正确转义，类似公式的名称会作为文本处理。输入或排班失败时仍返回包含 `error` 的 JSON。
-`--check` 只运行人员资格与单时段容量预检，返回 `preflight_passed` 和结构化 `issues`；即使通过预检，工作量与休息约束仍可能使完整求解无解。
+`--check` 只运行人员资格与单时段容量预检，返回 `preflight_passed` 和结构化 `issues`；即使通过预检，工作量与休息约束仍可能使完整求解无解。`--node-limit N` 返回带 `status` 和 `stats` 的有界结果：`found` 表示找到排班，`unsatisfiable` 表示在预算内证明无解，`budget_exhausted` 表示搜索尚未完成，不能当作无解。
 
 ## 下一阶段
 

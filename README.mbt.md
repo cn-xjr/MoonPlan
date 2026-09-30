@@ -8,7 +8,7 @@ MoonPlan 是一个使用纯 MoonBit 实现的**可解释有限域约束求解与
 
 排班和资源分配广泛存在于门店、医院、实验室、赛事和学校，但业务规则经常被写成难以验证的循环和条件分支。MoonPlan 将这些规则提升为可组合约束，同时利用 MoonBit 的代数数据类型、模式匹配、多后端和 Wasm 能力，最终提供浏览器内可交互的建模、求解和解释工作台。
 
-生态查重于 2026-09-09 覆盖 Mooncakes 与 GitHub 的 constraint solver、CSP、scheduling、SAT、planning 等关键词；已发现线性规划项目，但尚未发现面向有限域约束、可解释排班和 Wasm 工作台的高度重合 MoonBit 包。
+项目定位聚焦于“技能与可用性驱动的可解释排班”。生态中已有通用有限域求解器，因此本项目不把通用回溯搜索作为唯一卖点，而把多人覆盖、预检证据、修复建议、可追踪目标和 Wasm/JSON 边界作为主要应用价值。
 
 ## 已实现
 
@@ -39,6 +39,7 @@ MoonPlan 是一个使用纯 MoonBit 实现的**可解释有限域约束求解与
 - `RosterPolicy` 与 `build_roster_with_policy` 最小休息间隔组合规则
 - `build_roster_with_consecutive_limit` 连续工作时段硬上限
 - `CoverageRequest::solve_with_consecutive_limit` 用于多人岗位覆盖需求
+- `CoverageRequest::solve_with_node_limit` 区分找到解、证明无解和预算耗尽
 - `AssignmentPenalty` 与 `build_preferred_roster` 软偏好优化
 - `RosterObjective` 与相邻班次疲劳成本优化
 - `RosterObjectiveOrder` 加权或词典序多级目标排序
@@ -60,6 +61,7 @@ moon run cmd/week
 `cmd/coverage` 接受 `--json` 参数，输出可供外部脚本处理的排班或错误 JSON。例如在 PowerShell 中运行 `moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw)`。
 添加 `--format csv` 可按岗位名额导出 CSV；错误仍以 JSON 返回。
 添加 `--check` 可只运行人员资格和单时段容量预检，并取得结构化问题 JSON；预检通过不保证完整排班有解。
+添加 `--node-limit N` 可将搜索预算显式交给调用方；`budget_exhausted` 只表示搜索尚未完成，不会被误报成无解。
 
 底层模型可以通过 `add_named_constraint` 保留业务规则名称。无解时调用 `Problem::explain`，即可获得包含原始序号、规则名称和类型化约束的不可再删减冲突集合；策略修复 API 会继续把预检事实和冲突证据转换为增补合格人员、增加时段容量、提高工作量上限或放宽休息间隔等具体建议。
 
