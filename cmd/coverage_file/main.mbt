@@ -15,50 +15,93 @@ fn file_cli_error(message : String) -> String {
 }
 
 ///|
-fn flag_value(args : Array[String], flag : String) -> String? {
-  let mut found : String? = None
-  for index = 0; index + 1 < args.length(); index = index + 1 {
-    if args[index] == flag {
-      if found is Some(_) {
-        return None
-      }
-      found = Some(args[index + 1])
-    }
-  }
-  found
+priv struct FileOptions {
+  path : String?
+  check : Bool
+  csv : Bool
+  fair_limit : Int?
 }
 
 ///|
-fn render_coverage(text : String, args : Array[String]) -> String {
+fn parse_file_options(args : Array[String]) -> Result[FileOptions, String] {
+  let mut path : String? = None
+  let mut use_stdin = false
+  let mut check = false
+  let mut csv = false
+  let mut fair_limit : Int? = None
+  let mut index = 1
+  while index < args.length() {
+    match args[index] {
+      "--file" => {
+        if path is Some(_) ||
+          index + 1 >= args.length() ||
+          args[index + 1].has_prefix("--") {
+          return Err("--file requires exactly one path")
+        }
+        path = Some(args[index + 1])
+        index = index + 2
+      }
+      "--stdin" => {
+        if use_stdin {
+          return Err("--stdin may be given only once")
+        }
+        use_stdin = true
+        index = index + 1
+      }
+      "--check" => {
+        if check {
+          return Err("--check may be given only once")
+        }
+        check = true
+        index = index + 1
+      }
+      "--csv" => {
+        if csv {
+          return Err("--csv may be given only once")
+        }
+        csv = true
+        index = index + 1
+      }
+      "--fair-node-limit" => {
+        if fair_limit is Some(_) || index + 1 >= args.length() {
+          return Err("--fair-node-limit requires exactly one positive integer")
+        }
+        let limit = @string.parse_int(args[index + 1]) catch {
+          _ =>
+            return Err(
+              "--fair-node-limit requires exactly one positive integer",
+            )
+        }
+        if limit <= 0 {
+          return Err("--fair-node-limit requires exactly one positive integer")
+        }
+        fair_limit = Some(limit)
+        index = index + 2
+      }
+      other => return Err("unknown option: \{other}")
+    }
+  }
+  if (path is Some(_) && use_stdin) || (path is None && !use_stdin) {
+    return Err("exactly one of --file PATH and --stdin is required")
+  }
+  if (check && (csv || fair_limit is Some(_))) || (csv && fair_limit is Some(_)) {
+    return Err("--check, --csv, and --fair-node-limit cannot be combined")
+  }
+  Ok({ path, check, csv, fair_limit, })
+}
+
+///|
+fn render_coverage(text : String, options : FileOptions) -> String {
   let request = match @moonplan.decode_coverage_request(text) {
     Err(error) => return file_cli_error(error.message())
     Ok(request) => request
   }
-  let fair_text = flag_value(args, "--fair-node-limit")
-  if args.contains("--fair-node-limit") && fair_text is None {
-    return file_cli_error("--fair-node-limit requires a positive integer")
-  }
-  let check = args.contains("--check")
-  let csv = args.contains("--csv")
-  if (check && (fair_text is Some(_) || csv)) || (csv && fair_text is Some(_)) {
-    return file_cli_error(
-      "--check, --csv, and --fair-node-limit cannot be combined",
-    )
-  }
-  match fair_text {
-    Some(raw_limit) => {
-      let limit = @string.parse_int(raw_limit) catch {
-        _ =>
-          return file_cli_error("--fair-node-limit requires a positive integer")
-      }
-      if limit <= 0 {
-        return file_cli_error("--fair-node-limit requires a positive integer")
-      }
+  match options.fair_limit {
+    Some(limit) =>
       match request.solve_fairest(limit) {
         Err(error) => file_cli_error(error.message())
         Ok(outcome) => @moonplan.encode_fair_coverage_outcome(outcome, 2)
       }
-    }
     None => {
       let analysis = match
         @moonplan.analyze_coverage_with_policy(
@@ -69,7 +112,7 @@ fn render_coverage(text : String, args : Array[String]) -> String {
         Err(error) => return file_cli_error(error.message())
         Ok(analysis) => analysis
       }
-      if check {
+      if options.check {
         return @moonplan.encode_coverage_analysis(analysis, 2)
       }
       if !analysis.is_feasible() {
@@ -78,7 +121,7 @@ fn render_coverage(text : String, args : Array[String]) -> String {
       match request.solve() {
         Err(error) => file_cli_error(error.message())
         Ok(roster) => {
-          if csv {
+          if options.csv {
             return @moonplan.encode_coverage_roster_csv(roster)
           }
           let absent : String? = None
@@ -96,18 +139,15 @@ fn render_coverage(text : String, args : Array[String]) -> String {
 ///|
 async fn main {
   let args = @env.args()
-  let path = flag_value(args, "--file")
-  let use_stdin = args.contains("--stdin")
-  if (path is Some(_) && use_stdin) || (path is None && !use_stdin) {
-    println(
-      file_cli_error(
-        "usage: moon run --target wasm cmd/coverage_file -- (--file PATH | --stdin) [--check | --csv | --fair-node-limit N]",
-      ),
-    )
-    return
+  let options = match parse_file_options(args) {
+    Err(message) => {
+      println(file_cli_error(message))
+      return
+    }
+    Ok(options) => options
   }
   let text = try {
-    match path {
+    match options.path {
       Some(file) => @fs.read_file(file).text()
       None => @stdio.stdin.read_all().text()
     }
@@ -117,5 +157,5 @@ async fn main {
       return
     }
   }
-  println(render_coverage(text, args))
+  println(render_coverage(text, options))
 }
