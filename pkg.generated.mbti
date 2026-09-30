@@ -13,7 +13,11 @@ pub fn analyze_coverage_with_policy(Array[Worker], Array[CoverageRequirement], R
 
 pub fn analyze_roster(Array[Worker], Array[Shift]) -> RosterAnalysis
 
+pub fn build_balanced_coverage_roster(Array[Worker], Array[CoverageRequirement], RosterPolicy, Int) -> Result[OptimizedCoverageRoster, RosterError]
+
 pub fn build_balanced_roster(Array[Worker], Array[Shift], Int) -> Result[OptimizedRoster, RosterError]
+
+pub fn build_balanced_roster_with_policy(Array[Worker], Array[Shift], RosterPolicy, Int) -> Result[OptimizedRoster, RosterError]
 
 pub fn build_capped_roster(Array[Worker], Array[Shift], Int) -> Result[Roster, RosterError]
 
@@ -154,6 +158,7 @@ pub(all) struct CoverageRequest {
   policy : RosterPolicy
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 pub fn CoverageRequest::solve(Self) -> Result[CoverageRoster, RosterError]
+pub fn CoverageRequest::solve_balanced(Self, Int) -> Result[OptimizedCoverageRoster, RosterError]
 pub fn CoverageRequest::solve_with_consecutive_limit(Self, Int) -> Result[CoverageRoster, RosterError]
 pub fn CoverageRequest::solve_with_node_limit(Self, Int) -> Result[CoverageSolveOutcome, RosterError]
 
@@ -212,6 +217,12 @@ pub(all) enum ModelError {
   InvalidNodeLimit(Int)
 } derive(Eq, @debug.Debug)
 pub fn ModelError::message(Self) -> String
+
+pub(all) struct OptimizedCoverageRoster {
+  roster : CoverageRoster
+  balance : BalanceScore
+  candidates_evaluated : Int
+} derive(Eq, ToJson, @debug.Debug)
 
 pub(all) struct OptimizedRoster {
   roster : Roster

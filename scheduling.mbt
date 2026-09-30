@@ -608,12 +608,37 @@ pub fn build_balanced_roster(
   shifts : Array[Shift],
   candidate_limit : Int,
 ) -> Result[OptimizedRoster, RosterError] {
+  build_balanced_roster_with_policy(
+    workers,
+    shifts,
+    RosterPolicy::default(),
+    candidate_limit,
+  )
+}
+
+///|
+/// Find the fairest roster among at most `candidate_limit` feasible rosters
+/// while enforcing workload and rest policy as hard constraints.
+pub fn build_balanced_roster_with_policy(
+  workers : Array[Worker],
+  shifts : Array[Shift],
+  policy : RosterPolicy,
+  candidate_limit : Int,
+) -> Result[OptimizedRoster, RosterError] {
   if candidate_limit <= 0 {
     return Err(InvalidCandidateLimit(candidate_limit))
   }
+  match validate_roster_policy(policy) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
   match build_roster_model(workers, shifts) {
     Err(error) => Err(error)
-    Ok(model) =>
+    Ok(model) => {
+      match apply_roster_policy(model, workers, shifts, policy) {
+        Err(error) => return Err(error)
+        Ok(_) => ()
+      }
       match model.problem.solve_all(candidate_limit) {
         Err(error) => Err(InvalidModel(error))
         Ok((solutions, stats)) => {
@@ -649,5 +674,6 @@ pub fn build_balanced_roster(
           })
         }
       }
+    }
   }
 }

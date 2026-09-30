@@ -55,6 +55,7 @@ repair suggestion: raise the per-worker workload limit from 1 to 2
 - `analyze_coverage_with_policy` 联合检查技能、可用时段、同一时段互斥和统一工作量上限，提前报告跨时段技能瓶颈
 - 技能、可用时间和同一时段容量冲突检查
 - 有界候选搜索与工作量均衡评分
+- 多人覆盖需求可直接调用 `solve_balanced`，在硬性策略下按有限候选数寻找更均衡的排班
 - 每人班次数量硬上限，避免跨时段过度排班
 - `WorkerQuota` 按人员设置最少与最多班次
 - `RosterPolicy` 组合工作量上限与最小休息间隔
@@ -103,12 +104,14 @@ moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw)
 moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw) --format csv
 moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw) --check
 moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw) --node-limit 100
+moon run cmd/coverage --json (Get-Content examples/coverage_week.json -Raw) --candidate-limit 100
 ```
 
 CSV 输出按岗位名额逐行列出需求与人员；名称中的逗号、引号、换行会正确转义，类似公式的名称会作为文本处理。输入或排班失败时仍返回包含 `error` 的 JSON。
 `--check` 返回 `preflight_passed` 和结构化 `issues`。当设置统一工作量上限时，它还会计算技能、可用时段和岗位需求之间的最大可覆盖名额；`policy_shortfall` 表示这些规则联合后出现的缺口。休息间隔等规则仍由完整求解器判断，因此预检通过不保证有解。`--node-limit N` 返回带 `status` 和 `stats` 的有界结果：`found` 表示找到排班，`unsatisfiable` 表示在预算内证明无解，`budget_exhausted` 表示搜索尚未完成，不能当作无解。
 
 `examples/coverage_week.json` 是一个可公开复现的六时段、多技能、多人覆盖样例，包含前台、支持和带班资格，可用同一组命令验证预检、求解和预算行为。
+`--candidate-limit N` 会在满足硬性规则的前 N 个排班中挑选工作量更均匀的结果，返回 `balance` 和 `candidates_evaluated`；候选数有限，结果不承诺全局最优。
 
 ## 下一阶段
 

@@ -26,6 +26,15 @@ pub(all) struct CoverageRoster {
 } derive(Eq, Debug, ToJson)
 
 ///|
+/// The fairest coverage roster found among a bounded set of candidates.
+/// A lower spread means more even assignment counts across all workers.
+pub(all) struct OptimizedCoverageRoster {
+  roster : CoverageRoster
+  balance : BalanceScore
+  candidates_evaluated : Int
+} derive(Eq, Debug, ToJson)
+
+///|
 /// A bounded coverage search distinguishes a roster from a proof of
 /// infeasibility and from an incomplete search.
 pub(all) enum CoverageSolveOutcome {
@@ -208,6 +217,44 @@ pub fn build_coverage_roster_with_node_limit(
       )
     Ok(ProvedUnsatisfiable(stats)) => Ok(CoverageProvedUnsatisfiable(stats))
     Ok(BudgetExhausted(stats)) => Ok(CoverageBudgetExhausted(stats))
+  }
+}
+
+///|
+/// Balance multi-worker coverage under the supplied hard roster policy.
+///
+/// This evaluates at most `candidate_limit` feasible rosters in deterministic
+/// search order. The result is best among those candidates, not necessarily
+/// the global optimum.
+pub fn build_balanced_coverage_roster(
+  workers : Array[Worker],
+  requirements : Array[CoverageRequirement],
+  policy : RosterPolicy,
+  candidate_limit : Int,
+) -> Result[OptimizedCoverageRoster, RosterError] {
+  match validate_coverage_requirements(requirements) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let expansion = expand_coverage_requirements(requirements)
+  match
+    build_balanced_roster_with_policy(
+      workers,
+      expansion.shifts,
+      policy,
+      candidate_limit,
+    ) {
+    Err(error) => Err(error)
+    Ok(result) =>
+      Ok({
+        roster: coverage_roster_from_roster(
+          result.roster,
+          requirements,
+          expansion,
+        ),
+        balance: result.balance,
+        candidates_evaluated: result.candidates_evaluated,
+      })
   }
 }
 

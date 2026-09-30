@@ -66,6 +66,20 @@ pub fn CoverageRequest::solve_with_node_limit(
 }
 
 ///|
+/// Evaluate a bounded number of feasible coverage rosters for workload balance.
+pub fn CoverageRequest::solve_balanced(
+  self : CoverageRequest,
+  candidate_limit : Int,
+) -> Result[OptimizedCoverageRoster, RosterError] {
+  build_balanced_coverage_roster(
+    self.workers,
+    self.requirements,
+    self.policy,
+    candidate_limit,
+  )
+}
+
+///|
 /// Encode a bounded search outcome for CLI, browser, and service callers.
 /// `budget_exhausted` is intentionally distinct from `unsatisfiable`.
 pub fn encode_coverage_solve_outcome(

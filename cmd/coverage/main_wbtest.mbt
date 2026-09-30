@@ -83,3 +83,13 @@ test "coverage command exposes bounded search without conflating outcomes" {
   assert_true(found.contains("\"status\": \"found\""))
   assert_true(found.contains("\"position\": 2"))
 }
+
+///|
+test "coverage command returns a bounded balance score" {
+  assert_eq(candidate_budget(["runner", "--candidate-limit", "2"]), Ok(Some(2)))
+  assert_true(candidate_budget(["runner", "--candidate-limit", "0"]) is Err(_))
+  let result = solve_coverage_balanced(sample_json(), 2)
+  assert_true(result.contains("\"candidates_evaluated\": 2"))
+  assert_true(result.contains("\"spread\": 0"))
+  assert_true(result.contains("\"position\": 2"))
+}
