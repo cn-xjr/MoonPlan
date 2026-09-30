@@ -5,6 +5,14 @@ priv struct CoverageCliResponse {
 } derive(ToJson)
 
 ///|
+priv struct BoundedCliResponse {
+  status : String
+  roster : Json
+  stats : Json
+  error : Json
+} derive(ToJson)
+
+///|
 fn response_error(message : String) -> String {
   let absent : String? = None
   let response : CoverageCliResponse = {
@@ -66,6 +74,41 @@ fn solve_coverage(text : String, csv : Bool) -> String {
 }
 
 ///|
+fn solve_coverage_bounded(text : String, node_limit : Int) -> String {
+  let request = match @moonplan.decode_coverage_request(text) {
+    Err(error) => return response_error(error.message())
+    Ok(request) => request
+  }
+  let absent : String? = None
+  let response : BoundedCliResponse = match
+    request.solve_with_node_limit(node_limit) {
+    Err(error) => return response_error(error.message())
+    Ok(@moonplan.CoverageFound(roster)) =>
+      {
+        status: "found",
+        roster: @json.to_json(roster),
+        stats: @json.to_json(roster.stats),
+        error: @json.to_json(absent),
+      }
+    Ok(@moonplan.CoverageProvedUnsatisfiable(stats)) =>
+      {
+        status: "unsatisfiable",
+        roster: @json.to_json(absent),
+        stats: @json.to_json(stats),
+        error: @json.to_json(absent),
+      }
+    Ok(@moonplan.CoverageBudgetExhausted(stats)) =>
+      {
+        status: "budget_exhausted",
+        roster: @json.to_json(absent),
+        stats: @json.to_json(stats),
+        error: @json.to_json(absent),
+      }
+  }
+  @json.to_json(response).stringify(indent=2)
+}
+
+///|
 fn output_csv(args : Array[String]) -> Bool? {
   let mut found = false
   let mut csv = false
@@ -100,23 +143,50 @@ fn json_argument(args : Array[String]) -> String? {
 }
 
 ///|
+fn node_budget(args : Array[String]) -> Result[Int?, String] {
+  let mut budget : Int? = None
+  for index = 0; index < args.length(); index = index + 1 {
+    if args[index] == "--node-limit" {
+      if budget is Some(_) || index + 1 >= args.length() {
+        return Err("--node-limit requires exactly one positive integer")
+      }
+      let parsed = @string.parse_int(args[index + 1]) catch {
+        _ => return Err("--node-limit requires exactly one positive integer")
+      }
+      if parsed <= 0 {
+        return Err("--node-limit requires exactly one positive integer")
+      }
+      budget = Some(parsed)
+    }
+  }
+  Ok(budget)
+}
+
+///|
 fn main {
   let args = @env.args()
-  match (json_argument(args), output_csv(args)) {
-    (Some(text), Some(csv)) =>
-      if args.contains("--check") {
-        if csv {
-          println(response_error("--check cannot be combined with CSV output"))
-        } else {
-          println(check_coverage(text))
-        }
+  match (json_argument(args), output_csv(args), node_budget(args)) {
+    (Some(text), Some(csv), Ok(budget)) =>
+      if (args.contains("--check") && (csv || budget is Some(_))) ||
+        (csv && budget is Some(_)) {
+        println(
+          response_error(
+            "--check, --format csv, and --node-limit cannot be combined",
+          ),
+        )
+      } else if args.contains("--check") {
+        println(check_coverage(text))
       } else {
-        println(solve_coverage(text, csv))
+        match budget {
+          Some(limit) => println(solve_coverage_bounded(text, limit))
+          None => println(solve_coverage(text, csv))
+        }
       }
+    (_, _, Err(message)) => println(response_error(message))
     _ =>
       println(
         response_error(
-          "usage: moon run cmd/coverage --json '<coverage-request-json>' [--check | --format json|csv]",
+          "usage: moon run cmd/coverage --json '<coverage-request-json>' [--check | --format json|csv | --node-limit N]",
         ),
       )
   }

@@ -66,3 +66,20 @@ test "coverage command exposes structured preflight without solving" {
   assert_true(failing.contains("\"assignable\": 1"))
   assert_true(@json.parse(check_coverage("{")) is Object(_))
 }
+
+///|
+test "coverage command exposes bounded search without conflating outcomes" {
+  assert_eq(node_budget(["runner"]), Ok(None))
+  assert_eq(node_budget(["runner", "--node-limit", "2"]), Ok(Some(2)))
+  assert_true(node_budget(["runner", "--node-limit", "0"]) is Err(_))
+  assert_true(node_budget(["runner", "--node-limit", "abc"]) is Err(_))
+  assert_true(
+    node_budget(["runner", "--node-limit", "1", "--node-limit", "2"]) is Err(_),
+  )
+  let exhausted = solve_coverage_bounded(sample_json(), 1)
+  assert_true(exhausted.contains("\"status\": \"budget_exhausted\""))
+  assert_true(exhausted.contains("\"nodes\": 1"))
+  let found = solve_coverage_bounded(sample_json(), 2)
+  assert_true(found.contains("\"status\": \"found\""))
+  assert_true(found.contains("\"position\": 2"))
+}
