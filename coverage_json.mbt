@@ -43,6 +43,20 @@ pub fn CoverageRequest::solve_with_consecutive_limit(
 }
 
 ///|
+/// Solve a request with an explicit search budget and a three-way outcome.
+pub fn CoverageRequest::solve_with_node_limit(
+  self : CoverageRequest,
+  node_limit : Int,
+) -> Result[CoverageSolveOutcome, RosterError] {
+  build_coverage_roster_with_node_limit(
+    self.workers,
+    self.requirements,
+    self.policy,
+    node_limit,
+  )
+}
+
+///|
 /// Encode a coverage roster and its search statistics as JSON text.
 pub fn encode_coverage_roster(roster : CoverageRoster, indent : Int) -> String {
   @json.to_json(roster).stringify(indent~)

@@ -26,6 +26,15 @@ pub(all) struct CoverageRoster {
 } derive(Eq, Debug, ToJson)
 
 ///|
+/// A bounded coverage search distinguishes a roster from a proof of
+/// infeasibility and from an incomplete search.
+pub(all) enum CoverageSolveOutcome {
+  CoverageFound(CoverageRoster)
+  CoverageProvedUnsatisfiable(SolveStats)
+  CoverageBudgetExhausted(SolveStats)
+} derive(Eq, Debug)
+
+///|
 priv struct CoverageExpansion {
   shifts : Array[Shift]
   requirement_indexes : Array[Int]
@@ -145,6 +154,60 @@ pub fn build_coverage_roster_with_consecutive_limit(
     Err(error) => Err(error)
     Ok(roster) =>
       Ok(coverage_roster_from_roster(roster, requirements, expansion))
+  }
+}
+
+///|
+/// Search for a coverage roster within at most `node_limit` assignments.
+///
+/// Exhausting the budget does not prove that a roster is impossible. Model
+/// validation errors are returned separately from all three search outcomes.
+pub fn build_coverage_roster_with_node_limit(
+  workers : Array[Worker],
+  requirements : Array[CoverageRequirement],
+  policy : RosterPolicy,
+  node_limit : Int,
+) -> Result[CoverageSolveOutcome, RosterError] {
+  if node_limit <= 0 {
+    return Err(InvalidModel(InvalidNodeLimit(node_limit)))
+  }
+  match validate_coverage_requirements(requirements) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match validate_roster_policy(policy) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let expansion = expand_coverage_requirements(requirements)
+  let model = match build_roster_model(workers, expansion.shifts) {
+    Err(error) => return Err(error)
+    Ok(model) => model
+  }
+  match apply_roster_policy(model, workers, expansion.shifts, policy) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match model.problem.solve_with_node_limit(node_limit, Mrv) {
+    Err(error) => Err(InvalidModel(error))
+    Ok(Found(solution, stats)) =>
+      Ok(
+        CoverageFound(
+          coverage_roster_from_roster(
+            roster_from_solution(
+              workers,
+              expansion.shifts,
+              model.variables,
+              solution,
+              stats,
+            ),
+            requirements,
+            expansion,
+          ),
+        ),
+      )
+    Ok(ProvedUnsatisfiable(stats)) => Ok(CoverageProvedUnsatisfiable(stats))
+    Ok(BudgetExhausted(stats)) => Ok(CoverageBudgetExhausted(stats))
   }
 }
 

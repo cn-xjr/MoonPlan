@@ -21,6 +21,8 @@ pub fn build_coverage_roster(Array[Worker], Array[CoverageRequirement], RosterPo
 
 pub fn build_coverage_roster_with_consecutive_limit(Array[Worker], Array[CoverageRequirement], RosterPolicy, Int) -> Result[CoverageRoster, RosterError]
 
+pub fn build_coverage_roster_with_node_limit(Array[Worker], Array[CoverageRequirement], RosterPolicy, Int) -> Result[CoverageSolveOutcome, RosterError]
+
 pub fn build_preferred_roster(Array[Worker], Array[Shift], RosterPolicy, Array[AssignmentPenalty], Int) -> Result[PreferredRoster, RosterError]
 
 pub fn build_preferred_roster_with_objective(Array[Worker], Array[Shift], RosterPolicy, RosterObjective, Int) -> Result[PreferredRoster, RosterError]
@@ -150,6 +152,7 @@ pub(all) struct CoverageRequest {
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 pub fn CoverageRequest::solve(Self) -> Result[CoverageRoster, RosterError]
 pub fn CoverageRequest::solve_with_consecutive_limit(Self, Int) -> Result[CoverageRoster, RosterError]
+pub fn CoverageRequest::solve_with_node_limit(Self, Int) -> Result[CoverageSolveOutcome, RosterError]
 
 pub(all) struct CoverageRequirement {
   id : Int
@@ -164,6 +167,12 @@ pub(all) struct CoverageRoster {
   stats : SolveStats
 } derive(Eq, ToJson, @debug.Debug)
 pub fn CoverageRoster::workers_for_requirement(Self, Int) -> Array[Worker]
+
+pub(all) enum CoverageSolveOutcome {
+  CoverageFound(CoverageRoster)
+  CoverageProvedUnsatisfiable(SolveStats)
+  CoverageBudgetExhausted(SolveStats)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum ExplainOutcome {
   Consistent(SolveStats)
