@@ -16,6 +16,18 @@ pub(all) struct CoverageSolveResponse {
 } derive(ToJson)
 
 ///|
+/// Stable JSON envelope for an exact fairness search.
+pub(all) struct FairCoverageResponse {
+  status : String
+  roster : Json
+  balance : Json
+  windows_checked : Int
+  total_nodes : Int
+  total_backtracks : Int
+  error : Json
+} derive(ToJson)
+
+///|
 /// Decode a coverage request, preserving parser and schema errors separately.
 pub fn decode_coverage_request(
   text : String,
@@ -93,6 +105,64 @@ pub fn CoverageRequest::solve_balanced(
     self.policy,
     candidate_limit,
   )
+}
+
+///|
+/// Search for a provably fairest coverage roster within a global node budget.
+pub fn CoverageRequest::solve_fairest(
+  self : CoverageRequest,
+  node_limit : Int,
+) -> Result[FairCoverageOutcome, RosterError] {
+  build_fairest_coverage_roster(
+    self.workers,
+    self.requirements,
+    self.policy,
+    node_limit,
+  )
+}
+
+///|
+/// Encode an exact fairness outcome without conflating budget exhaustion
+/// with an optimality or infeasibility proof.
+pub fn encode_fair_coverage_outcome(
+  outcome : FairCoverageOutcome,
+  indent : Int,
+) -> String {
+  let absent : String? = None
+  let null = @json.to_json(absent)
+  let response : FairCoverageResponse = match outcome {
+    FairCoverageFound(result) =>
+      {
+        status: "optimal",
+        roster: @json.to_json(result.roster),
+        balance: @json.to_json(result.balance),
+        windows_checked: result.windows_checked,
+        total_nodes: result.total_nodes,
+        total_backtracks: result.total_backtracks,
+        error: null,
+      }
+    FairCoverageProvedUnsatisfiable(stats, windows_checked) =>
+      {
+        status: "unsatisfiable",
+        roster: null,
+        balance: null,
+        windows_checked,
+        total_nodes: stats.nodes,
+        total_backtracks: stats.backtracks,
+        error: null,
+      }
+    FairCoverageBudgetExhausted(stats, windows_checked) =>
+      {
+        status: "budget_exhausted",
+        roster: null,
+        balance: null,
+        windows_checked,
+        total_nodes: stats.nodes,
+        total_backtracks: stats.backtracks,
+        error: null,
+      }
+  }
+  @json.to_json(response).stringify(indent~)
 }
 
 ///|

@@ -29,6 +29,8 @@ pub fn build_coverage_roster_with_node_limit(Array[Worker], Array[CoverageRequir
 
 pub fn build_coverage_roster_with_strategy(Array[Worker], Array[CoverageRequirement], RosterPolicy, Int, SearchStrategy) -> Result[CoverageSolveOutcome, RosterError]
 
+pub fn build_fairest_coverage_roster(Array[Worker], Array[CoverageRequirement], RosterPolicy, Int) -> Result[FairCoverageOutcome, RosterError]
+
 pub fn build_preferred_roster(Array[Worker], Array[Shift], RosterPolicy, Array[AssignmentPenalty], Int) -> Result[PreferredRoster, RosterError]
 
 pub fn build_preferred_roster_with_objective(Array[Worker], Array[Shift], RosterPolicy, RosterObjective, Int) -> Result[PreferredRoster, RosterError]
@@ -56,6 +58,8 @@ pub fn encode_coverage_roster(CoverageRoster, Int) -> String
 pub fn encode_coverage_roster_csv(CoverageRoster) -> String
 
 pub fn encode_coverage_solve_outcome(CoverageSolveOutcome, Int) -> String
+
+pub fn encode_fair_coverage_outcome(FairCoverageOutcome, Int) -> String
 
 pub fn encode_preferred_roster(PreferredRoster, Int) -> String
 
@@ -161,6 +165,7 @@ pub(all) struct CoverageRequest {
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 pub fn CoverageRequest::solve(Self) -> Result[CoverageRoster, RosterError]
 pub fn CoverageRequest::solve_balanced(Self, Int) -> Result[OptimizedCoverageRoster, RosterError]
+pub fn CoverageRequest::solve_fairest(Self, Int) -> Result[FairCoverageOutcome, RosterError]
 pub fn CoverageRequest::solve_with_consecutive_limit(Self, Int) -> Result[CoverageRoster, RosterError]
 pub fn CoverageRequest::solve_with_node_limit(Self, Int) -> Result[CoverageSolveOutcome, RosterError]
 pub fn CoverageRequest::solve_with_strategy(Self, Int, SearchStrategy) -> Result[CoverageSolveOutcome, RosterError]
@@ -196,6 +201,30 @@ pub(all) enum ExplainOutcome {
   Consistent(SolveStats)
   Inconsistent(ConflictReport)
 } derive(Eq, @debug.Debug)
+
+pub(all) enum FairCoverageOutcome {
+  FairCoverageFound(FairCoverageRoster)
+  FairCoverageProvedUnsatisfiable(SolveStats, Int)
+  FairCoverageBudgetExhausted(SolveStats, Int)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct FairCoverageResponse {
+  status : String
+  roster : Json
+  balance : Json
+  windows_checked : Int
+  total_nodes : Int
+  total_backtracks : Int
+  error : Json
+} derive(ToJson)
+
+pub(all) struct FairCoverageRoster {
+  roster : CoverageRoster
+  balance : BalanceScore
+  windows_checked : Int
+  total_nodes : Int
+  total_backtracks : Int
+} derive(Eq, ToJson, @debug.Debug)
 
 pub(all) enum ModelError {
   EmptyName

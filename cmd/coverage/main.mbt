@@ -119,6 +119,18 @@ fn solve_coverage_balanced(text : String, candidate_limit : Int) -> String {
 }
 
 ///|
+fn solve_coverage_fairest(text : String, node_limit : Int) -> String {
+  let request = match @moonplan.decode_coverage_request(text) {
+    Err(error) => return response_error(error.message())
+    Ok(request) => request
+  }
+  match request.solve_fairest(node_limit) {
+    Err(error) => response_error(error.message())
+    Ok(outcome) => @moonplan.encode_fair_coverage_outcome(outcome, 2)
+  }
+}
+
+///|
 fn output_csv(args : Array[String]) -> Bool? {
   let mut found = false
   let mut csv = false
@@ -183,6 +195,11 @@ fn candidate_budget(args : Array[String]) -> Result[Int?, String] {
 }
 
 ///|
+fn fair_budget(args : Array[String]) -> Result[Int?, String] {
+  positive_limit(args, "--fair-node-limit")
+}
+
+///|
 fn main {
   let args = @env.args()
   match
@@ -191,17 +208,27 @@ fn main {
       output_csv(args),
       node_budget(args),
       candidate_budget(args),
+      fair_budget(args),
     ) {
-    (Some(text), Some(csv), Ok(budget), Ok(candidates)) =>
+    (Some(text), Some(csv), Ok(budget), Ok(candidates), Ok(fair_limit)) =>
       if (
           args.contains("--check") &&
-          (csv || budget is Some(_) || candidates is Some(_))
+          (
+            csv ||
+            budget is Some(_) ||
+            candidates is Some(_) ||
+            fair_limit is Some(_)
+          )
         ) ||
-        (csv && (budget is Some(_) || candidates is Some(_))) ||
-        (budget is Some(_) && candidates is Some(_)) {
+        (
+          csv &&
+          (budget is Some(_) || candidates is Some(_) || fair_limit is Some(_))
+        ) ||
+        (budget is Some(_) && (candidates is Some(_) || fair_limit is Some(_))) ||
+        (candidates is Some(_) && fair_limit is Some(_)) {
         println(
           response_error(
-            "--check, --format csv, --node-limit, and --candidate-limit cannot be combined",
+            "--check, --format csv, --node-limit, --candidate-limit, and --fair-node-limit cannot be combined",
           ),
         )
       } else if args.contains("--check") {
@@ -212,16 +239,21 @@ fn main {
           None =>
             match candidates {
               Some(limit) => println(solve_coverage_balanced(text, limit))
-              None => println(solve_coverage(text, csv))
+              None =>
+                match fair_limit {
+                  Some(limit) => println(solve_coverage_fairest(text, limit))
+                  None => println(solve_coverage(text, csv))
+                }
             }
         }
       }
-    (_, _, Err(message), _) => println(response_error(message))
-    (_, _, _, Err(message)) => println(response_error(message))
+    (_, _, Err(message), _, _) => println(response_error(message))
+    (_, _, _, Err(message), _) => println(response_error(message))
+    (_, _, _, _, Err(message)) => println(response_error(message))
     _ =>
       println(
         response_error(
-          "usage: moon run cmd/coverage --json '<coverage-request-json>' [--check | --format json|csv | --node-limit N | --candidate-limit N]",
+          "usage: moon run cmd/coverage --json '<coverage-request-json>' [--check | --format json|csv | --node-limit N | --candidate-limit N | --fair-node-limit N]",
         ),
       )
   }

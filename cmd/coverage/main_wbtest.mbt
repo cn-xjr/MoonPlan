@@ -93,3 +93,15 @@ test "coverage command returns a bounded balance score" {
   assert_true(result.contains("\"spread\": 0"))
   assert_true(result.contains("\"position\": 2"))
 }
+
+///|
+test "coverage command reports a fairness proof or incomplete search" {
+  assert_eq(fair_budget(["runner", "--fair-node-limit", "2"]), Ok(Some(2)))
+  assert_true(fair_budget(["runner", "--fair-node-limit", "0"]) is Err(_))
+  let exhausted = solve_coverage_fairest(sample_json(), 1)
+  assert_true(exhausted.contains("\"status\": \"budget_exhausted\""))
+  assert_true(exhausted.contains("\"windows_checked\": 1"))
+  let optimal = solve_coverage_fairest(sample_json(), 100)
+  assert_true(optimal.contains("\"status\": \"optimal\""))
+  assert_true(optimal.contains("\"spread\": 0"))
+}

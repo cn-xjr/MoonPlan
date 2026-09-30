@@ -56,6 +56,7 @@ repair suggestion: raise the per-worker workload limit from 1 to 2
 - 技能、可用时间和同一时段容量冲突检查
 - 有界候选搜索与工作量均衡评分
 - 多人覆盖需求可直接调用 `solve_balanced`，在硬性策略下按有限候选数寻找更均衡的排班
+- `solve_fairest` 用统一节点预算搜索并证明最小工作量跨度，预算耗尽时给出独立状态
 - 每人班次数量硬上限，避免跨时段过度排班
 - `WorkerQuota` 按人员设置最少与最多班次
 - `RosterPolicy` 组合工作量上限与最小休息间隔
@@ -106,6 +107,7 @@ moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw) --format 
 moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw) --check
 moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw) --node-limit 100
 moon run cmd/coverage --json (Get-Content examples/coverage_week.json -Raw) --candidate-limit 100
+moon run cmd/coverage --json (Get-Content examples/coverage_week.json -Raw) --fair-node-limit 10000
 ```
 
 CSV 输出按岗位名额逐行列出需求与人员；名称中的逗号、引号、换行会正确转义，类似公式的名称会作为文本处理。输入或排班失败时仍返回包含 `error` 的 JSON。
@@ -113,6 +115,7 @@ CSV 输出按岗位名额逐行列出需求与人员；名称中的逗号、引�
 
 `examples/coverage_week.json` 是一个可公开复现的六时段、多技能、多人覆盖样例，包含前台、支持和带班资格，可用同一组命令验证预检、求解和预算行为。
 `--candidate-limit N` 会在满足硬性规则的前 N 个排班中挑选工作量更均匀的结果，返回 `balance` 和 `candidates_evaluated`；候选数有限，结果不承诺全局最优。
+`--fair-node-limit N` 使用同一个节点预算逐一证明更小的工作量跨度不可行；返回 `optimal` 时，`balance` 是已证明的最优跨度，并附 `windows_checked`、`total_nodes`、`total_backtracks`。预算不足时返回 `budget_exhausted`。在当前公开周样例中，前 1000 个候选的跨度仍为 4；精确入口用 1447 个节点证明跨度 1 可达。该数值是固定输入与当前搜索顺序下的搜索计数，运行时间因机器而异。
 
 ## 下一阶段
 

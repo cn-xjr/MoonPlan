@@ -35,6 +35,7 @@ MoonPlan 是一个使用纯 MoonBit 实现的**可解释有限域约束求解与
 - `analyze_coverage_with_policy` 识别总岗位容量缺口和跨时段技能瓶颈
 - `build_balanced_roster` 有界候选优化与工作量均衡评分
 - `CoverageRequest::solve_balanced` 在多人岗位需求和硬性策略下评估有限候选排班
+- `CoverageRequest::solve_fairest` 在统一节点预算内证明最小工作量跨度
 - `build_capped_roster` 每人班次数量硬上限
 - `WorkerQuota` 与 `build_roster_with_quotas` 个人工作量区间
 - `RosterPolicy` 与 `build_roster_with_policy` 最小休息间隔组合规则
@@ -64,6 +65,7 @@ moon run cmd/week
 添加 `--check` 可运行人员资格、时段容量和统一工作量上限的联合预检，并取得结构化问题 JSON；休息规则仍需完整求解。
 添加 `--node-limit N` 可将搜索预算显式交给调用方；`budget_exhausted` 只表示搜索尚未完成，不会被误报成无解。
 添加 `--candidate-limit N` 可取得有限候选中的工作量均衡排班及候选数；这个分数不代表全局最优证明。
+添加 `--fair-node-limit N` 可搜索有证明的最小工作量跨度；预算耗尽时返回独立状态，不输出未经证明的最优排班。
 
 底层模型可以通过 `add_named_constraint` 保留业务规则名称。无解时调用 `Problem::explain`，即可获得包含原始序号、规则名称和类型化约束的不可再删减冲突集合；策略修复 API 会继续把预检事实和冲突证据转换为增补合格人员、增加时段容量、提高工作量上限或放宽休息间隔等具体建议。
 
