@@ -110,6 +110,14 @@ moon run cmd/coverage --json (Get-Content examples/coverage_week.json -Raw) --ca
 moon run cmd/coverage --json (Get-Content examples/coverage_week.json -Raw) --fair-node-limit 10000
 ```
 
+文件或管道输入可使用 `cmd/coverage_file`，不必把整份 JSON 放进命令行参数。此入口支持 Wasm 和原生目标；WasmGC/JS 目标仍可使用上面的 `--json` 入口。
+
+```powershell
+moon run --target wasm cmd/coverage_file -- --file examples/coverage_week.json --check
+moon run --target wasm cmd/coverage_file -- --file examples/coverage_week.json --fair-node-limit 10000
+Get-Content examples/coverage.json -Raw | moon run --target wasm cmd/coverage_file -- --stdin
+```
+
 CSV 输出按岗位名额逐行列出需求与人员；名称中的逗号、引号、换行会正确转义，类似公式的名称会作为文本处理。输入或排班失败时仍返回包含 `error` 的 JSON。
 `--check` 返回 `preflight_passed` 和结构化 `issues`。当设置统一工作量上限时，它还会计算技能、可用时段和岗位需求之间的最大可覆盖名额；`policy_shortfall` 表示这些规则联合后出现的缺口。休息间隔等规则仍由完整求解器判断，因此预检通过不保证有解。`--node-limit N` 返回带 `status` 和 `stats` 的有界结果：`found` 表示找到排班，`unsatisfiable` 表示在预算内证明无解，`budget_exhausted` 表示搜索尚未完成，不能当作无解。
 
@@ -119,7 +127,7 @@ CSV 输出按岗位名额逐行列出需求与人员；名称中的逗号、引�
 
 ## 下一阶段
 
-1. 为排班示例增加直接读取文件和标准输入的命令行入口与更丰富的真实业务规则。
+1. 扩展真实业务规则，并为文件入口增加可供外部系统消费的退出状态与稳定错误代码。
 2. 在现有多级目标排序上增加新的软成本维度与分支定界优化。
 3. 扩展修复建议，覆盖连续工作硬上限和偏好冲突。
 4. 基于现有 JSON 边界和搜索事件流构建 MoonBit/Wasm 可视化工作台。

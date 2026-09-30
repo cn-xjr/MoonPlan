@@ -1,0 +1,13 @@
+supported_targets = "native+wasm"
+
+import {
+  "cn-xjr/moonplan",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+pkgtype(kind: "executable")

@@ -30,3 +30,7 @@ keywords = [
 preferred_target = "wasm-gc"
 
 description = "An explainable finite-domain constraint solver and scheduling toolkit for MoonBit."
+
+import {
+  "moonbitlang/async@0.22.4",
+}
