@@ -63,6 +63,17 @@ fn CoverageIssue::to_finding_json(self : CoverageIssue) -> CoverageFindingJson {
         required: Some(required),
         assignable: Some(assignable),
       }
+    CoveragePolicyShortfall(required, assignable) =>
+      {
+        code: "policy_shortfall",
+        message: self.message(),
+        worker_id: None,
+        requirement_id: None,
+        requirement_name: None,
+        slot: None,
+        required: Some(required),
+        assignable: Some(assignable),
+      }
   }
 }
 

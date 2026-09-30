@@ -52,7 +52,7 @@ repair suggestion: raise the per-worker workload limit from 1 to 2
 - `encode_coverage_roster_csv` 可把岗位名额导出为稳定、正确转义的表格数据
 - `analyze_coverage` 在求解前定位原始岗位需求的人员资格与时段容量缺口
 - `encode_coverage_analysis` 提供带稳定问题代码与原始业务 ID 的预检 JSON
-- `analyze_coverage_with_policy` 识别工作量上限造成的总岗位容量缺口
+- `analyze_coverage_with_policy` 联合检查技能、可用时段、同一时段互斥和统一工作量上限，提前报告跨时段技能瓶颈
 - 技能、可用时间和同一时段容量冲突检查
 - 有界候选搜索与工作量均衡评分
 - 每人班次数量硬上限，避免跨时段过度排班
@@ -106,7 +106,7 @@ moon run cmd/coverage --json (Get-Content examples/coverage.json -Raw) --node-li
 ```
 
 CSV 输出按岗位名额逐行列出需求与人员；名称中的逗号、引号、换行会正确转义，类似公式的名称会作为文本处理。输入或排班失败时仍返回包含 `error` 的 JSON。
-`--check` 只运行人员资格与单时段容量预检，返回 `preflight_passed` 和结构化 `issues`；即使通过预检，工作量与休息约束仍可能使完整求解无解。`--node-limit N` 返回带 `status` 和 `stats` 的有界结果：`found` 表示找到排班，`unsatisfiable` 表示在预算内证明无解，`budget_exhausted` 表示搜索尚未完成，不能当作无解。
+`--check` 返回 `preflight_passed` 和结构化 `issues`。当设置统一工作量上限时，它还会计算技能、可用时段和岗位需求之间的最大可覆盖名额；`policy_shortfall` 表示这些规则联合后出现的缺口。休息间隔等规则仍由完整求解器判断，因此预检通过不保证有解。`--node-limit N` 返回带 `status` 和 `stats` 的有界结果：`found` 表示找到排班，`unsatisfiable` 表示在预算内证明无解，`budget_exhausted` 表示搜索尚未完成，不能当作无解。
 
 `examples/coverage_week.json` 是一个可公开复现的六时段、多技能、多人覆盖样例，包含前台、支持和带班资格，可用同一组命令验证预检、求解和预算行为。
 

@@ -5,6 +5,7 @@ pub(all) enum CoverageIssue {
   CoverageNoEligibleWorker(Int, String)
   CoverageSlotShortfall(Int, Int, Int)
   CoverageWorkloadShortfall(Int, Int)
+  CoveragePolicyShortfall(Int, Int)
 } derive(Eq, Debug)
 
 ///|
@@ -18,6 +19,8 @@ pub fn CoverageIssue::message(self : CoverageIssue) -> String {
       "slot \{slot} needs \{required} workers, but at most \{assignable} positions can be filled"
     CoverageWorkloadShortfall(required, assignable) =>
       "coverage needs \{required} assignments, but worker workload limits allow at most \{assignable}"
+    CoveragePolicyShortfall(required, assignable) =>
+      "coverage needs \{required} assignments, but skill, slot, and workload limits together allow at most \{assignable}"
   }
 }
 
@@ -117,7 +120,10 @@ pub fn analyze_coverage_with_policy(
       for worker in workers {
         let slots : Array[Int] = []
         for requirement in requirements {
-          if worker.skills.contains(requirement.required_skill) &&
+          if (
+              requirement.required_skill.length() == 0 ||
+              worker.skills.contains(requirement.required_skill)
+            ) &&
             worker.available_slots.contains(requirement.slot) &&
             !int_member(slots, requirement.slot) {
             slots.push(requirement.slot)
@@ -132,6 +138,12 @@ pub fn analyze_coverage_with_policy(
       }
       if assignable < required {
         analysis.issues.push(CoverageWorkloadShortfall(required, assignable))
+      } else {
+        let expansion = expand_coverage_requirements(requirements)
+        let fillable = maximum_policy_coverage(workers, expansion.shifts, limit)
+        if fillable < required {
+          analysis.issues.push(CoveragePolicyShortfall(required, fillable))
+        }
       }
       Ok(analysis)
     }
