@@ -7,6 +7,15 @@ pub(all) struct CoverageRequest {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+/// Stable JSON envelope for a bounded coverage search.
+pub(all) struct CoverageSolveResponse {
+  status : String
+  roster : CoverageRoster?
+  stats : SolveStats
+  error : String?
+} derive(ToJson)
+
+///|
 /// Decode a coverage request, preserving parser and schema errors separately.
 pub fn decode_coverage_request(
   text : String,
@@ -54,6 +63,30 @@ pub fn CoverageRequest::solve_with_node_limit(
     self.policy,
     node_limit,
   )
+}
+
+///|
+/// Encode a bounded search outcome for CLI, browser, and service callers.
+/// `budget_exhausted` is intentionally distinct from `unsatisfiable`.
+pub fn encode_coverage_solve_outcome(
+  outcome : CoverageSolveOutcome,
+  indent : Int,
+) -> String {
+  let absent : String? = None
+  let response : CoverageSolveResponse = match outcome {
+    CoverageFound(roster) =>
+      {
+        status: "found",
+        roster: Some(roster),
+        stats: roster.stats,
+        error: absent,
+      }
+    CoverageProvedUnsatisfiable(stats) =>
+      { status: "unsatisfiable", roster: None, stats, error: absent, }
+    CoverageBudgetExhausted(stats) =>
+      { status: "budget_exhausted", roster: None, stats, error: absent, }
+  }
+  @json.to_json(response).stringify(indent~)
 }
 
 ///|

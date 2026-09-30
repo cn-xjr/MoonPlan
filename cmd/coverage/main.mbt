@@ -5,14 +5,6 @@ priv struct CoverageCliResponse {
 } derive(ToJson)
 
 ///|
-priv struct BoundedCliResponse {
-  status : String
-  roster : Json
-  stats : Json
-  error : Json
-} derive(ToJson)
-
-///|
 fn response_error(message : String) -> String {
   let absent : String? = None
   let response : CoverageCliResponse = {
@@ -79,33 +71,10 @@ fn solve_coverage_bounded(text : String, node_limit : Int) -> String {
     Err(error) => return response_error(error.message())
     Ok(request) => request
   }
-  let absent : String? = None
-  let response : BoundedCliResponse = match
-    request.solve_with_node_limit(node_limit) {
+  match request.solve_with_node_limit(node_limit) {
     Err(error) => return response_error(error.message())
-    Ok(@moonplan.CoverageFound(roster)) =>
-      {
-        status: "found",
-        roster: @json.to_json(roster),
-        stats: @json.to_json(roster.stats),
-        error: @json.to_json(absent),
-      }
-    Ok(@moonplan.CoverageProvedUnsatisfiable(stats)) =>
-      {
-        status: "unsatisfiable",
-        roster: @json.to_json(absent),
-        stats: @json.to_json(stats),
-        error: @json.to_json(absent),
-      }
-    Ok(@moonplan.CoverageBudgetExhausted(stats)) =>
-      {
-        status: "budget_exhausted",
-        roster: @json.to_json(absent),
-        stats: @json.to_json(stats),
-        error: @json.to_json(absent),
-      }
+    Ok(outcome) => @moonplan.encode_coverage_solve_outcome(outcome, 2)
   }
-  @json.to_json(response).stringify(indent=2)
 }
 
 ///|
