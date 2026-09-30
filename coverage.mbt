@@ -177,6 +177,25 @@ pub fn build_coverage_roster_with_node_limit(
   policy : RosterPolicy,
   node_limit : Int,
 ) -> Result[CoverageSolveOutcome, RosterError] {
+  build_coverage_roster_with_strategy(
+    workers,
+    requirements,
+    policy,
+    node_limit,
+    Mrv,
+  )
+}
+
+///|
+/// Search for a coverage roster with an explicit deterministic strategy.
+/// Different strategies can change search cost without changing the rules.
+pub fn build_coverage_roster_with_strategy(
+  workers : Array[Worker],
+  requirements : Array[CoverageRequirement],
+  policy : RosterPolicy,
+  node_limit : Int,
+  strategy : SearchStrategy,
+) -> Result[CoverageSolveOutcome, RosterError] {
   if node_limit <= 0 {
     return Err(InvalidModel(InvalidNodeLimit(node_limit)))
   }
@@ -197,7 +216,7 @@ pub fn build_coverage_roster_with_node_limit(
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match model.problem.solve_with_node_limit(node_limit, Mrv) {
+  match model.problem.solve_with_node_limit(node_limit, strategy) {
     Err(error) => Err(InvalidModel(error))
     Ok(Found(solution, stats)) =>
       Ok(

@@ -93,6 +93,7 @@ moon check
 moon test
 moon run cmd/main
 moon run cmd/week
+moon run cmd/benchmark
 ```
 
 `cmd/week` 给出七天的岗位覆盖示例：每天早班两名客服、晚班一名前台，包含预先请假的员工与每人最多四班的限制。测试会核对全部 21 个名额、人员资格和工作量上限。CI 对可用的 Wasm、WasmGC 与 JS 目标执行检查和测试；原生目标保留给本地工具链验证。
@@ -122,6 +123,7 @@ CSV 输出按岗位名额逐行列出需求与人员；名称中的逗号、引�
 5. 可复现排班基准与跨后端一致性验证。
 
 完整设计、不变量和里程碑见 [DESIGN.md](DESIGN.md)。可执行文档版本见 [README.mbt.md](README.mbt.md)。
+策略对比、基准构造和跨后端搜索计数见 [BENCHMARK.md](BENCHMARK.md)。
 
 ## 开源与来源
 

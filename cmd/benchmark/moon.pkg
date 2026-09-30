@@ -1,0 +1,6 @@
+import {
+  "cn-xjr/moonplan",
+  "moonbitlang/core/env",
+}
+
+pkgtype(kind: "executable")

@@ -27,6 +27,8 @@ pub fn build_coverage_roster_with_consecutive_limit(Array[Worker], Array[Coverag
 
 pub fn build_coverage_roster_with_node_limit(Array[Worker], Array[CoverageRequirement], RosterPolicy, Int) -> Result[CoverageSolveOutcome, RosterError]
 
+pub fn build_coverage_roster_with_strategy(Array[Worker], Array[CoverageRequirement], RosterPolicy, Int, SearchStrategy) -> Result[CoverageSolveOutcome, RosterError]
+
 pub fn build_preferred_roster(Array[Worker], Array[Shift], RosterPolicy, Array[AssignmentPenalty], Int) -> Result[PreferredRoster, RosterError]
 
 pub fn build_preferred_roster_with_objective(Array[Worker], Array[Shift], RosterPolicy, RosterObjective, Int) -> Result[PreferredRoster, RosterError]
@@ -161,6 +163,7 @@ pub fn CoverageRequest::solve(Self) -> Result[CoverageRoster, RosterError]
 pub fn CoverageRequest::solve_balanced(Self, Int) -> Result[OptimizedCoverageRoster, RosterError]
 pub fn CoverageRequest::solve_with_consecutive_limit(Self, Int) -> Result[CoverageRoster, RosterError]
 pub fn CoverageRequest::solve_with_node_limit(Self, Int) -> Result[CoverageSolveOutcome, RosterError]
+pub fn CoverageRequest::solve_with_strategy(Self, Int, SearchStrategy) -> Result[CoverageSolveOutcome, RosterError]
 
 pub(all) struct CoverageRequirement {
   id : Int

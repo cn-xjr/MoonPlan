@@ -33,6 +33,7 @@ jobs:
         run: |
           moon run --target wasm --deny-warn --warn-list "-79" cmd/main
           moon run --target wasm --deny-warn --warn-list "-79" cmd/week
+          moon run --target wasm --deny-warn --warn-list "-79" cmd/benchmark
           moon info
           moon fmt
           git diff --exit-code

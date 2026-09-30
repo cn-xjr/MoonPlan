@@ -66,6 +66,22 @@ pub fn CoverageRequest::solve_with_node_limit(
 }
 
 ///|
+/// Search a coverage request with a selected strategy and assignment budget.
+pub fn CoverageRequest::solve_with_strategy(
+  self : CoverageRequest,
+  node_limit : Int,
+  strategy : SearchStrategy,
+) -> Result[CoverageSolveOutcome, RosterError] {
+  build_coverage_roster_with_strategy(
+    self.workers,
+    self.requirements,
+    self.policy,
+    node_limit,
+    strategy,
+  )
+}
+
+///|
 /// Evaluate a bounded number of feasible coverage rosters for workload balance.
 pub fn CoverageRequest::solve_balanced(
   self : CoverageRequest,
