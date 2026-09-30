@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f4ee" />
+    <title>MoonPlan Studio · 可解释排班工作台</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">◐</span><span>MoonPlan <strong>Studio</strong></span></div>
+      <div class="top-right"><span class="runtime"><span id="runtime-dot"></span><span id="runtime-label">正在加载 MoonBit / WasmGC</span></span><a href="https://github.com/cn-xjr/MoonPlan" target="_blank" rel="noreferrer">GitHub ↗</a></div>
+    </header>
+
+    <main class="shell">
+      <section class="intro">
+        <p class="eyebrow">人员排班 · 可行性诊断 · 公平性证明</p>
+        <h1>把复杂规则，变成可以解释的安排。</h1>
+        <p>编辑人员和岗位需求，先发现配置缺口，再由浏览器中的 MoonBit 求解器证明最小工作量差距。</p>
+      </section>
+
+      <div class="workspace">
+        <section class="panel editor-panel" aria-labelledby="editor-title">
+          <div class="panel-heading">
+            <div><p class="section-label">01 / 输入</p><h2 id="editor-title">排班场景</h2></div>
+            <span id="scenario-count" class="pill">载入中</span>
+          </div>
+          <div class="toolbar">
+            <button id="load-sample" class="button subtle" type="button">恢复公开样例</button>
+            <label class="button subtle file-label">导入 JSON<input id="upload" type="file" accept=".json,application/json" /></label>
+            <button id="download" class="button subtle" type="button">导出 JSON</button>
+          </div>
+          <div class="tabs" role="tablist" aria-label="场景编辑方式">
+            <button id="form-tab" class="tab active" type="button" role="tab" aria-selected="true">表单编辑</button>
+            <button id="json-tab" class="tab" type="button" role="tab" aria-selected="false">JSON 编辑</button>
+          </div>
+
+          <div id="form-editor" class="editor-content">
+            <div class="subheading"><h3>人员</h3><button id="add-worker" class="text-button" type="button">＋ 添加人员</button></div>
+            <p class="helper">技能和可用时段用英文逗号分隔；同一时段每人最多承担一个岗位。</p>
+            <div id="worker-list" class="record-list"></div>
+            <div class="subheading requirements-heading"><h3>岗位需求</h3><button id="add-requirement" class="text-button" type="button">＋ 添加岗位</button></div>
+            <div id="requirement-list" class="record-list"></div>
+            <div class="subheading policy-heading"><h3>统一规则</h3></div>
+            <div class="policy-fields">
+              <label>每人最多班次<input id="max-shifts" type="number" min="0" step="1" /></label>
+              <label>时段最小间隔<input id="min-gap" type="number" min="0" step="1" /></label>
+            </div>
+          </div>
+
+          <div id="json-editor" class="editor-content hidden">
+            <p class="helper">可粘贴或修改完整的 CoverageRequest JSON。切回表单前会验证格式。</p>
+            <textarea id="json-input" spellcheck="false" aria-label="排班 JSON"></textarea>
+          </div>
+        </section>
+
+        <section class="panel result-panel" aria-labelledby="result-title">
+          <div class="panel-heading result-heading">
+            <div><p class="section-label">02 / 计算</p><h2 id="result-title">求解结果</h2></div>
+            <span class="pill accent">本地计算 · 无需上传</span>
+          </div>
+          <div class="action-row">
+            <button id="check" class="button outline" type="button" disabled>检查可行性</button>
+            <button id="solve" class="button primary" type="button" disabled>寻找最公平排班 <span>→</span></button>
+            <label class="limit-field">搜索节点上限<input id="node-limit" type="number" min="1" step="1" value="10000" /></label>
+          </div>
+          <div id="message" class="message" role="status" aria-live="polite">正在初始化浏览器求解器…</div>
+          <div id="summary" class="summary-grid"></div>
+          <div id="details" class="details"></div>
+        </section>
+      </div>
+      <footer>核心约束、预检和公平性证明均由 MoonBit 编译的 WasmGC 模块执行。前端仅负责编辑与呈现结果。</footer>
+    </main>
+  </body>
+</html>

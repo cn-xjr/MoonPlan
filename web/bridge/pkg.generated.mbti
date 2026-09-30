@@ -1,0 +1,15 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "cn-xjr/moonplan/web/bridge"
+
+// Values
+pub fn check_coverage(String) -> String
+
+pub fn solve_fairest_coverage(String, Int) -> String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

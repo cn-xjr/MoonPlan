@@ -69,6 +69,8 @@ moon run cmd/week
 
 `cmd/coverage_file` 在 Wasm/原生目标上直接读取 `--file PATH` 或 `--stdin`，也支持 `--check`、`--csv` 与 `--fair-node-limit N`。例如：`moon run --target wasm cmd/coverage_file -- --file examples/coverage_week.json --fair-node-limit 10000`。WasmGC/JS 目标可继续使用上述 `--json` 入口。
 
+`web/bridge` 把预检和有预算的最公平排班导出到浏览器 WasmGC 模块；`web/` 提供表单/JSON 编辑、场景导入导出和排班结果展示。运行方式见 [web/README.md](web/README.md)。
+
 底层模型可以通过 `add_named_constraint` 保留业务规则名称。无解时调用 `Problem::explain`，即可获得包含原始序号、规则名称和类型化约束的不可再删减冲突集合；策略修复 API 会继续把预检事实和冲突证据转换为增补合格人员、增加时段容量、提高工作量上限或放宽休息间隔等具体建议。
 
 ## 路线图

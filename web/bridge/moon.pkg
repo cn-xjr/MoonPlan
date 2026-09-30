@@ -1,0 +1,12 @@
+supported_targets = "wasm-gc"
+
+import {
+  "cn-xjr/moonplan",
+  "moonbitlang/core/json",
+}
+
+pkgtype(kind: "foreign_library")
+
+options(
+  link: { "wasm-gc": { "use-js-builtin-string": true } },
+)

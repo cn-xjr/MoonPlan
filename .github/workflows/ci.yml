@@ -36,6 +36,8 @@ jobs:
           moon run --target wasm --deny-warn --warn-list "-79" cmd/benchmark
           moon run --target wasm --deny-warn --warn-list "-79" cmd/coverage_file -- --file examples/coverage_week.json --check
           moon run --target wasm --deny-warn --warn-list "-79" cmd/coverage_file -- --file examples/coverage_week.json --fair-node-limit 10000
+          moon build --target wasm-gc --release --deny-warn --warn-list "-79" web/bridge
+          node --check web/app.js
           moon info
           moon fmt
           git diff --exit-code

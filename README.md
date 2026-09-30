@@ -125,12 +125,16 @@ CSV 输出按岗位名额逐行列出需求与人员；名称中的逗号、引�
 `--candidate-limit N` 会在满足硬性规则的前 N 个排班中挑选工作量更均匀的结果，返回 `balance` 和 `candidates_evaluated`；候选数有限，结果不承诺全局最优。
 `--fair-node-limit N` 使用同一个节点预算逐一证明更小的工作量跨度不可行；返回 `optimal` 时，`balance` 是已证明的最优跨度，并附 `windows_checked`、`total_nodes`、`total_backtracks`。预算不足时返回 `budget_exhausted`。在当前公开周样例中，前 1000 个候选的跨度仍为 4；精确入口用 1447 个节点证明跨度 1 可达。该数值是固定输入与当前搜索顺序下的搜索计数，运行时间因机器而异。
 
+## 浏览器工作台
+
+`web/` 提供可编辑的周排班演示：表单与 JSON 双模式、场景导入导出、预检问题列表、最公平排班与工作量展示。核心计算来自同一 MoonBit 内核编译的 WasmGC，不依赖后端服务或 JavaScript 重写算法。先运行 `moon build --target wasm-gc --release web/bridge`，再从仓库根目录启动静态 HTTP 服务；详见 [web/README.md](web/README.md)。
+
 ## 下一阶段
 
 1. 扩展真实业务规则，并为文件入口增加可供外部系统消费的退出状态与稳定错误代码。
 2. 在现有多级目标排序上增加新的软成本维度与分支定界优化。
 3. 扩展修复建议，覆盖连续工作硬上限和偏好冲突。
-4. 基于现有 JSON 边界和搜索事件流构建 MoonBit/Wasm 可视化工作台。
+4. 扩展浏览器工作台的搜索事件可视化与规则编辑体验。
 5. 可复现排班基准与跨后端一致性验证。
 
 完整设计、不变量和里程碑见 [DESIGN.md](DESIGN.md)。可执行文档版本见 [README.mbt.md](README.mbt.md)。
